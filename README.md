@@ -5,18 +5,30 @@ hash-routed SPA split into ordinary files the way a normal front-end project
 is organised, and served as-is. Three products share one codebase:
 
 - **Marketing site** (`#/…`) — public pages: home, services, who it's for,
-  the journey, news, FAQ, about, join/log in.
-- **Client app demo** (`#/app/…`) — BRD-01's "Mom App": Today, Library, Ask
-  a question, Urgent guidance, Referrals, and a Me section (preferences,
-  consent centre, my data, change phone). Reached by finishing "Join Mami
-  Care" or "Log in".
-- **CMS** (`#/cms/…`) — one internal tool for content, the helpdesk queue,
-  the facility directory, staff access and programme analytics/M&E, rather
-  than separate admin, gov and analytics systems. What a signed-in person
-  sees is driven by role (Programme Admin, Clinical Reviewer, Content
-  Editor, M&E Analyst) — reached from the footer's "Staff & partner sign-in".
-  Publishing or withdrawing an item here is reflected immediately in the
-  client app's Library, in the same browser session.
+  the journey, news, FAQ, about, join/log in, and a public facility search
+  (`#/facilities`, no account needed — searchable by province/name, not a
+  live map, since precise location is never collected; each result links
+  out to Maps by place name for directions).
+- **Client app demo** (`#/app/…`) — the "Mom App": Today, Library, Referrals,
+  and a Me section (preferences, consent centre, my data, change phone).
+  Reached by finishing "Join Mami Care" or "Log in". **Ask a question**
+  (`#/app/ask`) is a small chat: an automated Level-1 layer answers only
+  from the approved knowledge base, and hands off to a Level-2 human
+  operator (with a simulated reply) whenever it can't, a danger-sign
+  keyword is detected, or the visitor asks for a person directly.
+  **Talk to a person** (`#/app/callback`) offers a tap-to-call link to the
+  free helpline plus a scheduled call-back request.
+- **CMS** (`#/cms/…`) — one internal tool covering every domain the system
+  build spec's Admin Console lists (content, clients & operational data,
+  the helpdesk queue, master data/facilities, users & access, integration,
+  reports & audit, configuration), rather than separate admin, gov and
+  analytics systems. What a signed-in person sees is driven by role
+  (Programme Admin, Clinical Reviewer, Content Editor, M&E Analyst) —
+  reached from the footer's "Staff & partner sign-in", switchable anytime
+  from the sidebar. Publishing/withdrawing content, or escalating a client
+  question to a helpdesk case, is reflected immediately on the client-app
+  side, in the same browser session — one shared in-memory model standing
+  in for what would be separate services.
 
 None of this is backed by a real server — enrolment, login, consent, the
 CMS role picker and every workflow action are simulated in memory so the
@@ -34,11 +46,13 @@ public/
                          referrals, CMS roles/KPIs/helpdesk/facilities/staff
     components.js       shared render bits: tiles, journey widget, news cards,
                          CTA band, the #/app shell + tabs, the #/cms shell + sidebar
-    pages.js            marketing pages + the 5-step "Join Mami Care" wizard
+    pages.js            marketing pages, the 5-step "Join Mami Care" wizard,
+                         and the public facility search
     pages-app.js        the #/app client-app-demo pages
-    pages-cms.js        the #/cms pages + content/case/staff mutators
+    pages-cms.js        the #/cms pages (9 sections) + their mutators
     enroll-state.js      shared in-memory state for the join wizard
-    cms-state.js         which CMS role is currently selected
+    ask-state.js          L1→L2 ask-a-question logic (data layer, no UI)
+    cms-state.js          which CMS role is currently selected
     router.js            hash router, page chrome, and all interactive wiring
   assets/
     emblem-mowa.png, emblem-mowa-lg.png, hero-mother-baby.png

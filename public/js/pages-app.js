@@ -7,9 +7,11 @@ import { I } from './icons.js';
 import { LANG, t, khNote } from './i18n.js';
 import {
   DEMO_PROFILE, LIBRARY_TOPICS, LIBRARY_ITEMS, libraryTopic, libraryItem, itemsInTopic,
-  SUGGESTED_QUESTIONS, URGENT_SIGNS, REFERRALS, referral, CONSENT_TYPES
+  SUGGESTED_QUESTIONS, URGENT_SIGNS, REFERRALS, referral, CONSENT_TYPES,
+  HELPLINE_NUMBER, HELPLINE_HOURS
 } from './data.js';
 import { appShell, contentRow, statusPill, referralStepper } from './components.js';
+import { MY_CASES, getCase } from './ask-state.js';
 
 /* Small 404 that stays inside the app shell rather than dropping back to
    the marketing "page not found" screen. */
@@ -116,23 +118,136 @@ export function pageAppContent(topicSlug, itemSlug){
   return appShell({active:'library', title: LANG?'អត្ថបទ':'Article', back:'#/app/library/'+item.topic, inner});
 }
 
-/* ============ Ask a question ============ */
+/* ============ Ask a question — a small chat with an automated
+   Level-1 layer that hands off to a real person (Level 2) ============ */
+const ASK_STATUS_LABEL = {
+  answered_auto:['Waiting on your feedback','កំពុងរង់ចាំមតិកែលម្អ'],
+  escalated:['With a helpdesk operator','កំពុងឆ្លងកាត់បុគ្គលិកជំនួយ'],
+  answered:['Answered','បានឆ្លើយ'],
+  closed:['Closed','បានបិទ']
+};
+function askStatusPill(status){
+  const tone = {answered_auto:'brand', escalated:'warn', answered:'ok', closed:''}[status] || '';
+  const label = ASK_STATUS_LABEL[status] || ['—','—'];
+  return `<span class="pill${tone?' pill-'+tone:''}">${LANG?label[1]:label[0]}</span>`;
+}
+
 export function pageAppAsk(){
+  const recent = MY_CASES.slice(0, 6);
   const inner = `
-    <p class="small" style="margin-bottom:1rem">${LANG?'សរសេរសំណួររបស់អ្នក ឬជ្រើសរើសសំណួរខាងក្រោម។':'Type your question, or pick one below.'}</p>
+    <p class="small" style="margin-bottom:1rem">${LANG?'សរសេរសំណួររបស់អ្នក ឬជ្រើសរើសសំណួរខាងក្រោម។ ចម្លើយភ្លាមៗគឺមកពីព័ត៌មានសុខភាពដែលបានអនុម័តតែប៉ុណ្ណោះ។'
+      :'Type your question, or pick one below. Instant answers only ever come from approved health information — anything else goes to a person.'}</p>
     <form id="askForm" style="display:flex;flex-direction:column;gap:.7rem;margin-bottom:1.3rem">
       <textarea id="askText" rows="3" maxlength="500" placeholder="${LANG?'សរសេរនៅទីនេះ…':'Type your question here…'}"
         style="font:inherit;font-size:.95rem;padding:.8rem;border:1.5px solid var(--line);border-radius:10px;resize:vertical;width:100%"></textarea>
       <button class="btn btn-primary" type="submit">${LANG?'ផ្ញើសំណួរ':'Send question'} ${I.arrow}</button>
     </form>
-    <div id="askAnswer"></div>
-    <p class="eyebrow" style="display:block;margin:1.4rem 0 .8rem">${LANG?'សំណួរដែលគេសួរញឹកញាប់':'Suggested questions'}</p>
-    <div style="display:flex;flex-direction:column;gap:.5rem">
+    <p class="eyebrow" style="display:block;margin-bottom:.8rem">${LANG?'សំណួរដែលគេសួរញឹកញាប់':'Suggested questions'}</p>
+    <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.5rem">
       ${SUGGESTED_QUESTIONS.map((q,i)=>`<button type="button" class="chip askq" data-q="${i}"
         style="text-align:left;justify-content:flex-start;width:100%">${q[0]}</button>`).join('')}
     </div>
+    ${recent.length ? `
+    <p class="eyebrow" style="display:block;margin-bottom:.8rem">${LANG?'ការសន្ទនាថ្មីៗ':'Recent conversations'}</p>
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      ${recent.map(c=>`<a class="ccard" href="#/app/ask/${c.id}">
+        <span class="playdot" style="color:var(--accent)">${I.ask}</span>
+        <span class="cbody"><b>${c.question}</b><span class="small">${c.id}</span></span>
+        ${askStatusPill(c.status)}</a>`).join('')}
+    </div>` : ''}
+    <div class="callout" style="margin-top:1.4rem"><p>${LANG?'ចង់និយាយជាមួយមនុស្សផ្ទាល់?':'Would rather talk to someone directly?'}
+      <a href="#/app/callback" style="color:var(--brand);font-weight:600">${LANG?'ស្នើសុំការហៅត្រឡប់':'Request a call back'} ${I.arrow}</a></p></div>
   `;
   return appShell({active:'ask', title: LANG?'សួរសំណួរ':'Ask a question', back:'#/app/today', inner});
+}
+
+/* Render one message of the thread. Sentinel text values (set in
+   ask-state.js) are translated to copy here, in the UI layer. */
+function askBubble(msg){
+  if(msg.from==='me'){
+    return `<div class="askrow me"><div class="askbubble">${msg.text}</div></div>`;
+  }
+  if(msg.from==='system'){
+    const copy = {
+      connecting: LANG?'កំពុងភ្ជាប់អ្នកទៅកាន់បុគ្គលិកជំនួយ…':'Connecting you to a helpdesk operator…',
+      no_match: LANG?'យើងមិនទាន់មានចម្លើយដែលបានអនុម័តសម្រាប់សំណួរនេះទេ។':'We don’t have an approved answer for that yet.',
+      glad_helped: LANG?'រីករាយដែលបានជួយ!':'Glad that helped!'
+    }[msg.text] || '';
+    return `<p class="asksys">${copy}</p>`;
+  }
+  if(msg.from==='bot' && msg.text==='urgent_protocol'){
+    return `<div class="askrow bot"><div class="askbubble" style="background:color-mix(in srgb,var(--urgent) 10%,var(--surface));border-color:color-mix(in srgb,var(--urgent) 30%,transparent)">
+      <span class="asklabel" style="color:var(--urgent)">${LANG?'សញ្ញាបន្ទាន់':'Urgent'}</span>
+      ${LANG?'នេះស្តាប់ទៅដូចជាបន្ទាន់។ សូមទៅមណ្ឌលសុខភាពជិតបំផុតឥឡូវនេះ — កុំរង់ចាំចម្លើយនៅទីនេះ។'
+             :'This sounds urgent. Please go to your nearest health centre now — don’t wait for a reply here.'}
+      <br><a href="#/app/urgent" style="color:var(--urgent);font-weight:600">${LANG?'មើលការណែនាំបន្ទាន់':'See urgent guidance'} ${I.arrow}</a>
+    </div></div>`;
+  }
+  if(msg.from==='bot'){
+    return `<div class="askrow bot"><div class="askbubble">
+      <span class="asklabel">${LANG?'ចម្លើយស្វ័យប្រវត្តិ ពីព័ត៌មានដែលបានអនុម័ត':'Automatic answer, from approved information'}</span>
+      ${msg.text}</div></div>`;
+  }
+  if(msg.from==='operator'){
+    return `<div class="askrow operator"><div class="askbubble">
+      <span class="asklabel">${LANG?'បុគ្គលិកជំនួយ':'Helpdesk operator'}</span>
+      ${LANG?'សូមអភ័យទោសដែលឆ្លើយយឺត! សំណួររបស់អ្នកបានឆ្លងកាត់ការត្រួតពិនិត្យរួចហើយ — យើងអាចជួយបាន។ បើវាបន្ទាន់ជាងនេះ សូមទៅមណ្ឌលសុខភាព ឬហៅខ្សែជំនួយ។'
+             :'Thanks for your patience — I’ve read your question. A member of our team will follow up here shortly with next steps. If anything feels urgent in the meantime, go to your nearest health centre or call the helpline.'}</div></div>`;
+  }
+  return '';
+}
+
+export function pageAppAskThread(id){
+  const c = getCase(id);
+  if(!c) return pageAppMissing();
+  const showHelpful = c.status==='answered_auto';
+  const inner = `
+    <div class="askthread">${c.thread.map(askBubble).join('')}</div>
+    ${c.awaitingOperator ? `<p class="asksys" id="askWaiting">${LANG?'បុគ្គលិកជំនួយកំពុងអានសំណួររបស់អ្នក…':'A helpdesk operator is reading your question…'}</p>` : ''}
+    ${showHelpful ? `<div class="cta-row" style="justify-content:center;margin-top:.6rem">
+      <button class="btn btn-ghost" data-ask-action="helpful" data-case="${c.id}">${LANG?'វាមានប្រយោជន៍':'That helped'}</button>
+      <button class="btn btn-ghost" data-ask-action="not-helpful" data-case="${c.id}">${LANG?'ទេ, ត្រូវការជំនួយបន្ថែម':'No, I need more help'}</button>
+    </div>` : ''}
+    ${(c.status==='answered_auto') ? `<p class="small" style="text-align:center;margin-top:1rem">${LANG?'ឬ':'or'}
+      <a href="#/app/callback" style="color:var(--brand);font-weight:600">${LANG?'ស្នើសុំការហៅត្រឡប់ជំនួសវិញ':'request a call back instead'}</a></p>` : ''}
+    ${c.status!=='answered_auto' ? `<div id="askThreadMeta" data-case="${c.id}" data-awaiting="${c.awaitingOperator}" style="text-align:center;margin-top:1.4rem">${askStatusPill(c.status)}</div>` : ''}
+  `;
+  return appShell({active:'ask', title: c.id, back:'#/app/ask', inner});
+}
+
+/* ============ Talk to a person — call now, or request a call back ============ */
+export function pageAppCallback(){
+  const inner = `
+    <div class="stepbox" style="margin-bottom:1.2rem">
+      <h3>${LANG?'ហៅឥឡូវនេះ':'Call now'}</h3>
+      <p style="font-size:.92rem;color:var(--ink-2);margin-bottom:.9rem">${LANG?`ខ្សែជំនួយឥតគិតថ្លៃ បើកម៉ោង ${HELPLINE_HOURS}។`:`Free from any network, open ${HELPLINE_HOURS}.`}</p>
+      <a class="btn btn-primary" style="width:100%" href="tel:${HELPLINE_NUMBER.replace(/\s+/g,'')}">${I.phone} ${HELPLINE_NUMBER}</a>
+    </div>
+    <p class="eyebrow" style="display:block;margin-bottom:.7rem">${LANG?'ឬស្នើសុំឱ្យគេហៅមកអ្នក':'Or ask us to call you'}</p>
+    <form id="callbackForm" style="display:flex;flex-direction:column;gap:1rem">
+      <div class="field full">
+        <label>${LANG?'ពេលវេលាដែលអ្នកចង់ឱ្យហៅ':'When should we call?'}</label>
+        <div class="segs" data-group="cb-time">
+          <button type="button" class="seg" data-v="morning" aria-pressed="true">${LANG?'ព្រឹក':'Morning'}</button>
+          <button type="button" class="seg" data-v="afternoon" aria-pressed="false">${LANG?'រសៀល':'Afternoon'}</button>
+          <button type="button" class="seg" data-v="evening" aria-pressed="false">${LANG?'ល្ងាច':'Evening'}</button>
+        </div>
+      </div>
+      <div class="field full">
+        <label for="cbReason">${LANG?'អ្វីទាក់ទងនឹងបញ្ហានេះ? (មិនចាំបាច់)':'What is it about? (optional)'}</label>
+        <input id="cbReason" type="text" placeholder="${LANG?'ឧ. ចង់ប្តូរចំណូលចិត្ត':'e.g. want to change my preferences'}">
+      </div>
+      <button class="btn btn-primary" type="submit">${LANG?'ស្នើសុំការហៅត្រឡប់':'Request a call back'}</button>
+    </form>
+    <div id="callbackOk" hidden style="margin-top:1.1rem">
+      <div class="okpanel"><span style="color:var(--ok)">${I.check}</span>
+        <div><h3>${LANG?'បានស្នើសុំរួចហើយ':'Request sent'}</h3>
+        <p>${LANG?'បុគ្គលិកនិយាយភាសាខ្មែរនឹងហៅទៅអ្នកក្នុងអំឡុងពេលដែលអ្នកបានជ្រើសរើស ក្នុងរយៈពេល ២៤ ម៉ោង។ ឥតគិតថ្លៃ។'
+                  :'A Khmer-speaking operator will call you in your chosen window, within 24 hours. Free of charge.'}</p></div></div>
+    </div>
+    <div class="callout" style="border-left-color:var(--urgent);margin-top:1.3rem"><p><strong>${LANG?'នេះមិនមែនជាសេវាសង្គ្រោះបន្ទាន់ទេ':'This is not an emergency service'}</strong>${LANG?'។ ចំពោះសញ្ញាបន្ទាន់ សូមទៅមណ្ឌលសុខភាពឥឡូវនេះ។':'. For urgent signs, go to your nearest health centre now.'}</p></div>
+  `;
+  return appShell({active:'ask', title: LANG?'ជំនួយពីបុគ្គលិក':'Talk to a person', back:'#/app/ask', inner});
 }
 
 /* ============ Urgent guidance — reachable from every app screen ============ */
@@ -151,9 +266,8 @@ export function pageAppUrgent(){
     ${group('For your baby','សម្រាប់ទារក', URGENT_SIGNS.baby)}
     <div class="stepbox" style="margin-top:1.5rem">
       <h3>${LANG?'ត្រូវការនរណាម្នាក់ឥឡូវនេះ?':'Need someone right now?'}</h3>
-      <p style="font-size:.92rem;color:var(--ink-2)">${LANG?'ខ្សែជំនួយឥតគិតថ្លៃ បើកចាប់ពី ០៧:០០ ដល់ ១៩:០០ រៀងរាល់ថ្ងៃ។'
-        :'The free helpline is open 07:00–19:00, every day including weekends.'}</p>
-      <a class="btn btn-primary" style="width:100%;margin-top:.9rem" href="#/help">${LANG?'ទាក់ទងខ្សែជំនួយ':'Contact the helpline'}</a>
+      <p style="font-size:.92rem;color:var(--ink-2)">${LANG?`ខ្សែជំនួយឥតគិតថ្លៃ បើកម៉ោង ${HELPLINE_HOURS}។`:`Free from any network, open ${HELPLINE_HOURS}.`}</p>
+      <a class="btn btn-primary" style="width:100%;margin-top:.9rem" href="tel:${HELPLINE_NUMBER.replace(/\s+/g,'')}">${I.phone} ${HELPLINE_NUMBER}</a>
     </div>
   `;
   return appShell({active:'', title: LANG?'ការណែនាំបន្ទាន់':'Urgent guidance', back:'#/app/today', inner});
@@ -161,13 +275,15 @@ export function pageAppUrgent(){
 
 /* ============ Referrals ============ */
 export function pageAppReferrals(){
-  const inner = REFERRALS.length ? REFERRALS.map(r=>`
+  const list = REFERRALS.length ? REFERRALS.map(r=>`
     <a class="ccard" href="#/app/referrals/${r.id}">
       <span class="playdot" style="color:var(--accent)">${I.ref}</span>
       <span class="cbody"><b${LANG?' class="km"':''}>${LANG?r.reasonKh:r.reason}</b>
         <span class="small">${r.facility} · ${r.when}</span></span>
       ${statusPill(r.status)}
     </a>`).join('') : `<p class="small">${LANG?'អ្នកមិនទាន់មានការបញ្ជូនបន្តទេ':'You have no referrals yet.'}</p>`;
+  const inner = `${list}
+    <a class="chip" href="#/facilities" style="margin-top:.9rem;display:inline-flex">${I.pin} ${LANG?'ស្វែងរកមណ្ឌលសុខភាពផ្សេងទៀត':'Search other facilities'} ${I.arrow}</a>`;
   return appShell({active:'', title: LANG?'ការបញ្ជូនបន្ត':'My referrals', back:'#/app/today', inner});
 }
 

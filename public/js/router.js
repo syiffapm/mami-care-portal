@@ -4,23 +4,25 @@
    consent centre, referrals. */
 import { I } from './icons.js';
 import { LANG, t, toggleLang } from './i18n.js';
-import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, URGENT_KEYWORDS } from './data.js';
+import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS } from './data.js';
 import { renderJourney } from './components.js';
 import { ENROLL, enrollCode, gestationalWeeks } from './enroll-state.js';
+import { startAskCase, markHelpful, markNotHelpful, deliverOperatorReply } from './ask-state.js';
 import {
   pageHome, pageServices, pageWho, pageJourney, detailPage, pageRegister,
   pageLogin, pageNews, pageArticle, pageFaq, pageAbout, pageHelp,
-  pagePrivacy, pageMissing
+  pagePrivacy, pageMissing, pageFacilities
 } from './pages.js';
 import {
-  pageAppToday, pageAppLibrary, pageAppTopic, pageAppContent, pageAppAsk,
-  pageAppUrgent, pageAppReferrals, pageAppReferralDetail, pageAppMe,
+  pageAppToday, pageAppLibrary, pageAppTopic, pageAppContent, pageAppAsk, pageAppAskThread,
+  pageAppUrgent, pageAppReferrals, pageAppReferralDetail, pageAppMe, pageAppCallback,
   pageAppPreferences, pageAppConsent, pageAppData, pageAppPhone, pageAppMissing
 } from './pages-app.js';
 import { CMS, setCmsRole } from './cms-state.js';
 import {
   pageCmsLogin, pageCmsDashboard, pageCmsContent, pageCmsContentDetail,
-  pageCmsHelpdesk, pageCmsFacilities, pageCmsStaff,
+  pageCmsClients, pageCmsHelpdesk, pageCmsMaster, pageCmsStaff,
+  pageCmsIntegration, pageCmsReports, pageCmsConfig,
   cmsSetContentStatus, cmsSetCaseStatus, cmsSetStaffRole, cmsToggleStaffStatus
 } from './pages-cms.js';
 
@@ -44,6 +46,7 @@ export function route(){
   else if(p[0]==='news'&&p[1]){const n=news(p[1]);html=n?pageArticle(n):pageMissing();top='/news';}
   else if(p[0]==='news'){html=pageNews();top='/news';}
   else if(p[0]==='privacy'){html=pagePrivacy();top='/help';}
+  else if(p[0]==='facilities'){html=pageFacilities();top='/facilities';}
   else if(p[0]==='register'){html=pageRegister(p[1]);}
   else if(p[0]==='login'){html=pageLogin();}
   else if(isApp){html=routeApp(p);}
@@ -66,7 +69,9 @@ function routeApp(p){
   if(sub==='library' && p[2] && p[3]) return pageAppContent(p[2], p[3]);
   if(sub==='library' && p[2]) return pageAppTopic(p[2]);
   if(sub==='library') return pageAppLibrary();
+  if(sub==='ask' && p[2]) return pageAppAskThread(p[2]);
   if(sub==='ask') return pageAppAsk();
+  if(sub==='callback') return pageAppCallback();
   if(sub==='urgent') return pageAppUrgent();
   if(sub==='referrals' && p[2]) return pageAppReferralDetail(p[2]);
   if(sub==='referrals') return pageAppReferrals();
@@ -87,9 +92,13 @@ function routeCms(p){
   if(!sub || sub==='dashboard') return pageCmsDashboard(CMS.role);
   if(sub==='content' && p[2]) return pageCmsContentDetail(CMS.role, p[2]);
   if(sub==='content') return pageCmsContent(CMS.role);
+  if(sub==='clients') return pageCmsClients(CMS.role);
   if(sub==='helpdesk') return pageCmsHelpdesk(CMS.role);
-  if(sub==='facilities') return pageCmsFacilities(CMS.role);
-  if(sub==='staff') return pageCmsStaff(CMS.role);
+  if(sub==='master') return pageCmsMaster(CMS.role);
+  if(sub==='users') return pageCmsStaff(CMS.role);
+  if(sub==='integration') return pageCmsIntegration(CMS.role);
+  if(sub==='reports') return pageCmsReports(CMS.role);
+  if(sub==='config') return pageCmsConfig(CMS.role);
   return pageCmsDashboard(CMS.role);
 }
 
@@ -132,6 +141,9 @@ function wireForms(){
   wireEnrolWizard();
   wireLogin();
   wireAskAPage();
+  wireAskThread();
+  wireCallbackForm();
+  wireFacilitySearch();
   wirePreferences();
   wireConsentCentre();
   wireDataPage();
@@ -198,46 +210,82 @@ function wireLogin(){
   if(cont) cont.addEventListener('click', ()=>{ location.hash = '#/app/today'; });
 }
 
-/* ---------- ask a question (#/app/ask) ---------- */
-function askAnswerHTML(question){
-  const text = (question||'').toLowerCase();
-  if(URGENT_KEYWORDS.some(k=>text.includes(k.toLowerCase()))){
-    return `<div class="callout" style="border-left-color:var(--urgent)">
-      <p><strong>${LANG?'នេះស្តាប់ទៅដូចជាបន្ទាន់':'This sounds urgent'}</strong>${LANG?'។ ':'. '}${LANG?'សូមទៅមណ្ឌលសុខភាពជិតបំផុតឥឡូវនេះ។ បុគ្គលិកជំនួយក៏ត្រូវបានជូនដំណឹងផងដែរ។':'Please go to your nearest health centre now. A helpdesk person has also been alerted.'}</p>
-      <a class="btn btn-primary" style="margin-top:.7rem" href="#/app/urgent">${LANG?'មើលការណែនាំបន្ទាន់':'See urgent guidance'} ${I.arrow}</a></div>`;
-  }
-  const match = SUGGESTED_QUESTIONS.find(fq=>text && fq[0].toLowerCase().includes(text.slice(0,24).split(' ')[0]));
-  const exact = SUGGESTED_QUESTIONS.find(fq=>fq[0].toLowerCase()===text);
-  const found = exact || (text.length>6 ? match : null);
-  if(found){
-    return `<div class="callout"><p class="eyebrow" style="display:block;margin-bottom:.5rem">${LANG?'ចម្លើយស្វ័យប្រវត្តិ ពីព័ត៌មានសុខភាពដែលបានអនុម័ត':'Automatic answer from approved health information'}</p>
-      <p>${found[1]}</p></div>
-      <p class="small" style="margin-top:.7rem">${LANG?'តើចម្លើយនេះមានប្រយោជន៍ទេ?':'Was this helpful?'}
-        <a href="#" style="color:var(--brand);font-weight:600">${LANG?'បាទ/ចាស':'Yes'}</a> ·
-        <a href="#" style="color:var(--brand);font-weight:600">${LANG?'ទេ, ភ្ជាប់ទៅមនុស្ស':'No, connect me to a person'}</a></p>`;
-  }
-  const ref = 'CASE-'+Math.floor(1000+Math.random()*9000);
-  return `<div class="okpanel"><span style="color:var(--ok)">${I.check}</span>
-    <div><h3>${LANG?'ភ្ជាប់ទៅបុគ្គលិកជំនួយ':'Connected to the helpdesk'}</h3>
-    <p>${LANG?'យើងមិនទាន់មានចម្លើយដែលបានអនុម័តសម្រាប់សំណួរនេះទេ។ បុគ្គលិកនិយាយភាសាខ្មែរនឹងឆ្លើយតបក្នុងរយៈពេល ២៤ ម៉ោង។ លេខយោង៖'
-       :'We don’t have an approved answer for that yet. A Khmer-speaking person will reply within 24 hours. Reference:'} <b>${ref}</b></p></div></div>`;
-}
+/* ---------- ask a question (#/app/ask, #/app/ask/:id) ----------
+   L1 (automated, approved-answer-only) → L2 (human) escalation. The
+   actual matching/escalation logic lives in ask-state.js; this just
+   wires the composer, the suggested-question chips, and the thread
+   page's feedback buttons, then navigates to the case thread. */
 function wireAskAPage(){
   const form = document.getElementById('askForm');
-  if(!form) return;
-  const box = document.getElementById('askAnswer');
-  form.addEventListener('submit', e=>{
+  if(form) form.addEventListener('submit', e=>{
     e.preventDefault();
     const val = document.getElementById('askText').value.trim();
     if(!val) return;
-    box.innerHTML = askAnswerHTML(val);
+    const c = startAskCase(val);
+    if(c) location.hash = '#/app/ask/'+c.id;
   });
   document.querySelectorAll('.askq').forEach(b=>{
     b.addEventListener('click', ()=>{
       const q = SUGGESTED_QUESTIONS[+b.dataset.q];
-      document.getElementById('askText').value = q[0];
-      box.innerHTML = askAnswerHTML(q[0]);
+      const c = startAskCase(q[0]);
+      if(c) location.hash = '#/app/ask/'+c.id;
     });
+  });
+}
+
+let askOperatorTimer = null;
+function wireAskThread(){
+  const meta = document.getElementById('askThreadMeta');
+  const waitingEl = document.getElementById('askWaiting');
+  clearTimeout(askOperatorTimer);
+  if((meta || waitingEl)){
+    const id = meta ? meta.dataset.case : null;
+    const stillWaiting = meta ? meta.dataset.awaiting==='true' : !!waitingEl;
+    if(id && stillWaiting){
+      askOperatorTimer = setTimeout(()=>{
+        deliverOperatorReply(id);
+        if(location.hash === '#/app/ask/'+id) route();
+      }, 1600);
+    }
+  }
+  document.querySelectorAll('[data-ask-action]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const id = b.dataset.case;
+      if(b.dataset.askAction==='helpful') markHelpful(id);
+      else markNotHelpful(id);
+      route();
+    });
+  });
+}
+
+/* ---------- talk to a person: request a call back (#/app/callback) ---------- */
+function wireCallbackForm(){
+  const f = document.getElementById('callbackForm');
+  if(!f) return;
+  f.addEventListener('submit', e=>{ e.preventDefault(); f.hidden=true; document.getElementById('callbackOk').hidden=false; });
+}
+
+/* ---------- public facility search (#/facilities) ---------- */
+function wireFacilitySearch(){
+  const provinceSel = document.getElementById('facProvince');
+  const results = document.getElementById('facResults');
+  if(!results) return;
+  const applyFilter = ()=>{
+    const province = provinceSel ? provinceSel.value : '';
+    const typeBtn = document.querySelector('.segs[data-group="fac-type"] .seg[aria-pressed="true"]');
+    const type = typeBtn ? typeBtn.dataset.v : '';
+    let shown = 0;
+    results.querySelectorAll('.fac-card').forEach(card=>{
+      const match = (!province || card.dataset.province===province) && (!type || card.dataset.type===type);
+      card.hidden = !match;
+      if(match) shown++;
+    });
+    const empty = document.getElementById('facEmpty');
+    if(empty) empty.hidden = shown>0;
+  };
+  if(provinceSel) provinceSel.addEventListener('change', applyFilter);
+  document.querySelectorAll('.segs[data-group="fac-type"] .seg').forEach(b=>{
+    b.addEventListener('click', ()=>setTimeout(applyFilter, 0)); // after the generic .seg handler sets aria-pressed
   });
 }
 
@@ -355,6 +403,31 @@ function wireCms(){
   document.querySelectorAll('[data-staff-toggle]').forEach(b=>{
     b.addEventListener('click', ()=>{ cmsToggleStaffStatus(+b.dataset.staffToggle); route(); });
   });
+
+  /* Unmasking always asks why first, and every reveal is logged —
+     the point isn't the reveal, it's that it can never be silent. */
+  document.querySelectorAll('[data-unmask]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const reason = prompt(LANG?'ហេតុអ្វីបានជាអ្នកត្រូវការមើលទំនាក់ទំនងនេះ?':'Why do you need to see this contact detail?');
+      if(!reason) return;
+      const cell = b.closest('.pii-cell');
+      cell.innerHTML = `<b>${cell.dataset.real}</b>`;
+      const log = document.getElementById('unmaskLog');
+      if(log) log.insertAdjacentHTML('afterbegin',
+        `<p class="small">${new Date().toLocaleTimeString()} — ${LANG?'បង្ហាញដោយ':'unmasked by'} ${(cmsRoleName())} — ${LANG?'ហេតុផល':'reason'}: “${reason}”</p>`);
+    });
+  });
+
+  const configForm = document.getElementById('configForm');
+  if(configForm) configForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    document.getElementById('configOk').hidden = false;
+  });
+}
+
+function cmsRoleName(){
+  const r = CMS.role;
+  return r ? r.charAt(0).toUpperCase()+r.slice(1) : 'you';
 }
 
 document.addEventListener('click',e=>{

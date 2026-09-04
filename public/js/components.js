@@ -2,7 +2,10 @@
    the journey timeline widget, news cards and the closing CTA band. */
 import { I } from './icons.js';
 import { LANG, t, KH_SVC, KH_AUD, KH_WK } from './i18n.js';
-import { JOURNEY, SC, REFERRAL_STATUS_STEPS, CMS_ROLES, CMS_ACCESS } from './data.js';
+import {
+  JOURNEY, SC, REFERRAL_STATUS_STEPS, CMS_ROLES, CMS_ACCESS, cmsRole,
+  HELPDESK_CASES, allLibraryItems
+} from './data.js';
 
 export function tile(s){return `<a class="tile" href="#/services/${s.slug}">
   <span class="ic">${s.icon}</span>
@@ -146,35 +149,59 @@ export function referralStepper(status){
    sidebar lists only the sections the current role can see, and a
    role switcher lets the demo be tried as each one.
    ============================================================ */
+/* Every domain the build spec lists as needing an admin page (§11.2) is
+   represented here as one flat, always-visible nav item — nothing is
+   buried in a sub-menu — and CMS_ACCESS decides which ones a role sees. */
 export const CMS_NAV = [
-  { key:'dashboard',  href:'#/cms/dashboard',  icon:I.dash,  en:'Dashboard',        kh:'ផ្ទាំងគ្រប់គ្រង' },
-  { key:'content',    href:'#/cms/content',    icon:I.guide, en:'Content',          kh:'មាតិកា' },
-  { key:'helpdesk',   href:'#/cms/helpdesk',   icon:I.desk,  en:'Helpdesk queue',   kh:'ជួរជំនួយ' },
-  { key:'facilities', href:'#/cms/facilities', icon:I.ref,   en:'Facilities',       kh:'មណ្ឌលសុខភាព' },
-  { key:'staff',      href:'#/cms/staff',      icon:I.user,  en:'Staff & access',   kh:'បុគ្គលិក និងសិទ្ធិ' }
+  { key:'dashboard',   href:'#/cms/dashboard',   icon:I.dash,    en:'Dashboard',        kh:'ផ្ទាំងគ្រប់គ្រង' },
+  { key:'content',     href:'#/cms/content',     icon:I.guide,   en:'Content',          kh:'មាតិកា' },
+  { key:'clients',     href:'#/cms/clients',     icon:I.table,   en:'Clients & data',   kh:'ទិន្នន័យអតិថិជន' },
+  { key:'helpdesk',    href:'#/cms/helpdesk',    icon:I.desk,    en:'Helpdesk queue',   kh:'ជួរជំនួយ' },
+  { key:'master',      href:'#/cms/master',      icon:I.ref,     en:'Master data',      kh:'ទិន្នន័យមេ' },
+  { key:'users',       href:'#/cms/users',       icon:I.user,    en:'Users & access',   kh:'អ្នកប្រើប្រាស់ និងសិទ្ធិ' },
+  { key:'integration', href:'#/cms/integration', icon:I.plug,    en:'Integration',      kh:'ការធ្វើសមាហរណកម្ម' },
+  { key:'reports',     href:'#/cms/reports',     icon:I.chart,   en:'Reports & audit',  kh:'របាយការណ៍ និងសវនកម្ម' },
+  { key:'config',      href:'#/cms/config',      icon:I.sliders, en:'Configuration',    kh:'ការកំណត់' }
 ];
 
 export function cmsShell({role, active, title, inner}){
   const access = CMS_ACCESS[role] || [];
+  const r = cmsRole(role);
+  const badges = {
+    content: allLibraryItems().filter(x=>x.status==='pending_review').length,
+    helpdesk: HELPDESK_CASES.filter(c=>c.status==='open').length
+  };
   return `<div class="cmsapp">
     <aside class="cms-sidebar">
-      <div class="cms-brand">Mami Care<span>${LANG?'ប្រព័ន្ធគ្រប់គ្រង':'CMS'}</span></div>
+      <div class="cms-org">
+        <span class="cms-org-mark">${I.heart}</span>
+        <div><b>Mami Care</b><span>${LANG?'ប្រព័ន្ធគ្រប់គ្រង · CMS':'Admin Portal · CMS'}</span></div>
+      </div>
       <nav class="cms-nav">
-        ${CMS_NAV.filter(n=>access.includes(n.key)).map(n=>
-          `<a href="${n.href}" class="${active===n.key?'on':''}">${n.icon}<span>${LANG?n.kh:n.en}</span></a>`).join('')}
+        ${CMS_NAV.filter(n=>access.includes(n.key)).map(n=>{
+          const badge = badges[n.key];
+          return `<a href="${n.href}" class="${active===n.key?'on':''}">${n.icon}<span>${LANG?n.kh:n.en}</span>${badge?`<b class="cms-badge">${badge}</b>`:''}</a>`;
+        }).join('')}
       </nav>
-      <a class="exit" href="#/">${LANG?'ចាកចេញពី CMS':'Exit the CMS'}</a>
+      <div class="cms-sidebar-foot">
+        <div class="cms-profile">
+          <span class="cms-avatar">${I.user}</span>
+          <div><b>${r?(LANG?r.kh:r.name):role}</b><span>${LANG?'គណនីសាកល្បង':'Demo account'}</span></div>
+        </div>
+        <label class="cms-roleswitch"><span>${LANG?'ប្តូរតួនាទី':'Switch role'}</span>
+          <select id="cmsRoleSelect">
+            ${CMS_ROLES.map(x=>`<option value="${x.key}" ${x.key===role?'selected':''}>${LANG?x.kh:x.name}</option>`).join('')}
+          </select>
+        </label>
+        <a class="cms-exit" href="#/">${I.back} ${LANG?'ចាកចេញពី CMS':'Exit the CMS'}</a>
+      </div>
     </aside>
     <main class="cms-main">
       <div class="cms-topbar">
-        <h1>${title}</h1>
-        <label class="cms-roleswitch">${LANG?'មើលក្នុងនាមជា':'Viewing as'}
-          <select id="cmsRoleSelect">
-            ${CMS_ROLES.map(r=>`<option value="${r.key}" ${r.key===role?'selected':''}>${LANG?r.kh:r.name}</option>`).join('')}
-          </select>
-        </label>
+        <div><p class="eyebrow">Mami Care CMS</p><h1>${title}</h1></div>
+        <span class="cms-live-pill">${LANG?'សម័យសាកល្បង':'Demo session'}</span>
       </div>
-      ${inner}
+      <div class="cms-content">${inner}</div>
     </main>
   </div>`;
 }

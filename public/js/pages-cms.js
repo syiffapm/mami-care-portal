@@ -7,7 +7,9 @@ import { I } from './icons.js';
 import { LANG } from './i18n.js';
 import {
   CMS_ROLES, CMS_ACCESS, CMS_CAN_EDIT, CMS_CAN_REVIEW, CONTENT_STATUS_LABEL,
-  KPIS, HELPDESK_CASES, FACILITIES, STAFF, allLibraryItems, libraryTopic
+  KPIS, HELPDESK_CASES, FACILITIES, STAFF, allLibraryItems, libraryTopic,
+  CLIENT_SAMPLE, CONTROLLED_LISTS, INTEGRATIONS, INTEGRATION_QUEUE,
+  REPORT_CATEGORIES, AUDIT_SAMPLE, CONFIG_PARAMS
 } from './data.js';
 import { cmsShell } from './components.js';
 
@@ -195,22 +197,131 @@ export function pageCmsHelpdesk(role){
   return cmsShell({role, active:'helpdesk', title: LANG?'ជួរជំនួយ':'Helpdesk queue', inner});
 }
 
-/* ============ facility directory (read-only) ============ */
-export function pageCmsFacilities(role){
-  if(!canSee(role,'facilities')) return pageCmsDashboard(role);
+/* ============ WS-3 Master Data: facility directory + controlled lists ============ */
+export function pageCmsMaster(role){
+  if(!canSee(role,'master')) return pageCmsDashboard(role);
   const rows = FACILITIES.map(f=>`
     <tr><td><b>${f.name}</b><br><span class="small">${f.code}</span></td><td>${f.province}</td><td>${f.type}</td>
       <td>${f.enrolled.toLocaleString()}</td><td>${f.referrals30d}</td><td>${f.phone}</td></tr>`).join('');
   const inner = `
+    <p class="eyebrow" style="display:block;margin-bottom:.7rem">${LANG?'ថតមណ្ឌលសុខភាព':'Facility directory'}</p>
     <p class="small" style="margin-bottom:1rem">${LANG
-      ?'បញ្ជីនេះអានបានតែប៉ុណ្ណោះ — វាមកពីទីតាំងកណ្តាលរួម មិនមែនកែសម្រួលនៅទីនេះទេ។'
-      :'This directory is read-only here — it comes from the shared facility master, not edited in this tool.'}</p>
+      ?'អានបានតែប៉ុណ្ណោះ — មកពីទីតាំងកណ្តាលរួម។ លេខទាំងនេះមិនចេញផ្សាយជាសាធារណៈទេ (គ្មានការប្រៀបធៀបប្រតិបត្តិការរវាងមណ្ឌល)។'
+      :'Read-only here — from the shared facility master. These figures never appear on the public site (no per-facility performance comparisons).'}</p>
     <div class="cms-table-wrap"><table class="cms-table">
       <thead><tr><th>${LANG?'មណ្ឌលសុខភាព':'Facility'}</th><th>${LANG?'ខេត្ត':'Province'}</th><th>${LANG?'ប្រភេទ':'Type'}</th><th>${LANG?'ចុះឈ្មោះ':'Enrolled'}</th><th>${LANG?'ការបញ្ជូនបន្ត (៣០ថ្ងៃ)':'Referrals (30d)'}</th><th>${LANG?'ទូរស័ព្ទ':'Phone'}</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
+
+    <p class="eyebrow" style="display:block;margin:2rem 0 .7rem">${LANG?'បញ្ជីតម្លៃត្រួតពិនិត្យ':'Controlled value lists'}</p>
+    <p class="small" style="margin-bottom:1rem">${LANG
+      ?'ជម្រើសដែលបុគ្គលិកជ្រើសរើសពេលបំពេញទម្រង់ — មិនមែនអត្ថបទសេរីទេ ដើម្បីរក្សាទិន្នន័យស្អាត និងមិនធ្វើរោគវិនិច្ឆ័យ។'
+      :'The options staff choose from when filling in a form — never free text, so data stays clean and non-diagnostic.'}</p>
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      ${CONTROLLED_LISTS.map(l=>`
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1rem 1.15rem">
+          <b style="font-size:.9rem">${l.name}</b>
+          <div class="chips" style="margin-top:.6rem">${l.values.map(v=>`<span class="chip" style="cursor:default">${v}</span>`).join('')}</div>
+        </div>`).join('')}
+    </div>
   `;
-  return cmsShell({role, active:'facilities', title: LANG?'មណ្ឌលសុខភាព':'Facilities', inner});
+  return cmsShell({role, active:'master', title: LANG?'ទិន្នន័យមេ':'Master data', inner});
+}
+
+/* ============ WS-2 Client & Operational Data (pseudonymised) ============ */
+export function pageCmsClients(role){
+  if(!canSee(role,'clients')) return pageCmsDashboard(role);
+  const vTone = v=>v==='verified'?'ok':'';
+  const cTone = c=>c==='active'?'ok':c==='paused'?'warn':'';
+  const rows = CLIENT_SAMPLE.map((c,i)=>`
+    <tr>
+      <td><b>${c.ref}</b></td>
+      <td>${c.stage}</td>
+      <td>${c.facility}</td>
+      <td><span class="pill${vTone(c.verification)?' pill-'+vTone(c.verification):''}">${c.verification}</span></td>
+      <td><span class="pill${cTone(c.consent)?' pill-'+cTone(c.consent):''}">${c.consent}</span></td>
+      <td class="pii-cell" data-masked="${c.phoneMasked}" data-real="${c.phoneMasked.replace('x','9')}">${c.phoneMasked}
+        <button class="btn btn-ghost" data-unmask="${i}" style="padding:.25rem .55rem;font-size:.72rem;margin-left:.4rem">${LANG?'បង្ហាញ':'Unmask'}</button></td>
+    </tr>`).join('');
+  const inner = `
+    <p class="small" style="margin-bottom:1rem">${LANG
+      ?'គ្មានឈ្មោះ ឬលេខទូរស័ព្ទពេញលេញបង្ហាញនៅទីនេះទេ — លេខយោងសេវាតំណាងឱ្យអតិថិជននីមួយៗ។'
+      :'No real names appear here — a service reference stands in for each client, and contact details stay masked by default.'}</p>
+    <div class="cms-table-wrap"><table class="cms-table">
+      <thead><tr><th>${LANG?'លេខយោង':'Service ref'}</th><th>${LANG?'ដំណាក់កាល':'Stage'}</th><th>${LANG?'មណ្ឌលសុខភាព':'Facility'}</th><th>${LANG?'ការផ្ទៀងផ្ទាត់':'Verification'}</th><th>${LANG?'ការយល់ព្រម':'Consent'}</th><th>${LANG?'ទំនាក់ទំនង':'Contact'}</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div id="unmaskLog" style="margin-top:1.3rem"></div>
+    <div class="callout" style="margin-top:1rem"><p><strong>${LANG?'ការបង្ហាញត្រូវការហេតុផល':'Unmasking needs a reason'}</strong>${LANG?'។ ':'. '}${LANG
+      ?'រាល់ការបង្ហាញត្រូវបានកត់ត្រាជាមួយអ្នកមើល ពេលវេលា និងហេតុផល។':'Every unmask is logged with who looked, when, and why.'}</p></div>
+  `;
+  return cmsShell({role, active:'clients', title: LANG?'ទិន្នន័យអតិថិជន':'Clients & data', inner});
+}
+
+/* ============ WS-5 Integration & Data Quality ============ */
+export function pageCmsIntegration(role){
+  if(!canSee(role,'integration')) return pageCmsDashboard(role);
+  const tone = s=>({connected:'ok', pending:'brand', not_configured:'warn'}[s]||'');
+  const label = s=>({connected:['Connected','បានភ្ជាប់'], pending:['Pending','កំពុងរង់ចាំ'], not_configured:['Not configured','មិនទាន់កំណត់']}[s]);
+  const rows = INTEGRATIONS.map(c=>`
+    <tr><td><b>${c.id}</b></td><td>${c.name}</td><td>${c.direction}</td><td>${LANG?'កម្រិត':'Level'} ${c.level}</td>
+      <td><span class="pill${tone(c.status)?' pill-'+tone(c.status):''}">${LANG?label(c.status)[1]:label(c.status)[0]}</span></td>
+      <td class="small">${c.lastSync}</td></tr>`).join('');
+  const inner = `
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="klabel">${LANG?'ព្រឹត្តិការណ៍កំពុងរង់ចាំ':'Events queued'}</div><div class="kval">${INTEGRATION_QUEUE.queued}</div></div>
+      <div class="kpi-card ${INTEGRATION_QUEUE.deadLetter>0?'warn':'ok'}"><div class="klabel">${LANG?'បរាជ័យជាប់លាប់':'Dead letter'}</div><div class="kval">${INTEGRATION_QUEUE.deadLetter}</div></div>
+      <div class="kpi-card"><div class="klabel">${LANG?'រង់ចាំផ្គូផ្គង':'Awaiting reconciliation'}</div><div class="kval">${INTEGRATION_QUEUE.reconciliation}</div></div>
+    </div>
+    <p class="small" style="margin-bottom:1rem">${LANG
+      ?'ប្រព័ន្ធនេះដំណើរការពេញលេញនៅកម្រិត ០ (គ្មានការតភ្ជាប់ជាមួយប្រព័ន្ធកម្រិតបុគ្គល)។ ការតភ្ជាប់មិនមែនជាលក្ខខណ្ឌចាំបាច់សម្រាប់ដាក់ឱ្យប្រើប្រាស់ទេ។'
+      :'The system runs fully at Level 0 (no individual-level system connected yet). Integration is never a launch dependency.'}</p>
+    <div class="cms-table-wrap"><table class="cms-table">
+      <thead><tr><th>${LANG?'លេខសម្គាល់':'ID'}</th><th>${LANG?'ការតភ្ជាប់':'Connection'}</th><th>${LANG?'ទិសដៅ':'Direction'}</th><th>${LANG?'កម្រិត':'Level'}</th><th>${LANG?'ស្ថានភាព':'Status'}</th><th>${LANG?'សមកាលកម្មចុងក្រោយ':'Last sync'}</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  `;
+  return cmsShell({role, active:'integration', title: LANG?'ការធ្វើសមាហរណកម្ម':'Integration', inner});
+}
+
+/* ============ WS-6 Reports & Audit ============ */
+export function pageCmsReports(role){
+  if(!canSee(role,'reports')) return pageCmsDashboard(role);
+  const inner = `
+    <p class="eyebrow" style="display:block;margin-bottom:.7rem">${LANG?'ប្រភេទរបាយការណ៍':'Report categories'}</p>
+    <div class="grid-c c3" style="margin-bottom:2rem">
+      ${REPORT_CATEGORIES.map(c=>`<a class="tile" href="#/cms/dashboard" style="padding:1rem"><h3 style="font-size:.92rem">${c}</h3><span class="go" style="padding-top:.3rem">${LANG?'មើលនៅផ្ទាំងគ្រប់គ្រង':'See on Dashboard'} ${I.arrow}</span></a>`).join('')}
+    </div>
+    <p class="eyebrow" style="display:block;margin-bottom:.7rem">${LANG?'កំណត់ហេតុសវនកម្ម (គំរូ)':'Audit log (sample)'}</p>
+    <p class="small" style="margin-bottom:1rem">${LANG
+      ?'ឧបសម្ព័ន្ធតែប៉ុណ្ណោះ — គ្មានតួនាទីណាមួយ រួមទាំង Super Admin អាចកែប្រែ ឬលុបកំណត់ហេតុនេះបានទេ។'
+      :'Append-only — no role, including Super Admin, can edit or delete this log.'}</p>
+    <div class="cms-table-wrap"><table class="cms-table">
+      <thead><tr><th>${LANG?'ពេលវេលា':'When'}</th><th>${LANG?'អ្នកធ្វើសកម្មភាព':'Actor'}</th><th>${LANG?'សកម្មភាព':'Action'}</th><th>${LANG?'កម្មវត្ថុ':'Subject'}</th><th>${LANG?'កំណត់ចំណាំ':'Note'}</th></tr></thead>
+      <tbody>${AUDIT_SAMPLE.map(a=>`<tr><td class="small">${a.at}</td><td>${a.actor}</td><td><span class="pill">${a.action}</span></td><td>${a.subject}</td><td class="small">${a.note}</td></tr>`).join('')}</tbody>
+    </table></div>
+  `;
+  return cmsShell({role, active:'reports', title: LANG?'របាយការណ៍ និងសវនកម្ម':'Reports & audit', inner});
+}
+
+/* ============ WS-7 Configuration ============ */
+export function pageCmsConfig(role){
+  if(!canSee(role,'config')) return pageCmsDashboard(role);
+  const rows = CONFIG_PARAMS.map(p=>`
+    <div class="field"><label>${p.label}</label><input type="text" value="${p.value}" data-config="${p.key}"></div>`).join('');
+  const inner = `
+    <p class="small" style="margin-bottom:1.2rem">${LANG
+      ?'ប៉ារ៉ាម៉ែត្រទាំងនេះផ្លាស់ប្តូរបានដោយគ្មានការចេញផ្សាយកូដថ្មី។'
+      :'These parameters can change without a new code release.'}</p>
+    <form id="configForm"><div class="fgrid">${rows}</div>
+      <button class="btn btn-primary" type="submit" style="margin-top:1.3rem">${LANG?'រក្សាទុកការផ្លាស់ប្តូរ':'Save changes'}</button>
+    </form>
+    <div id="configOk" hidden style="margin-top:1.1rem">
+      <div class="okpanel"><span style="color:var(--ok)">${I.check}</span>
+        <div><h3>${LANG?'បានរក្សាទុក':'Saved'}</h3><p>${LANG?'ការផ្លាស់ប្តូរនឹងចូលជាធរមានលើកិច្ចការបន្ទាប់ ដោយមិនចាំបាច់ចេញផ្សាយកូដ។':'Changes take effect on the next job run — no code release needed.'}</p></div></div>
+    </div>
+  `;
+  return cmsShell({role, active:'config', title: LANG?'ការកំណត់':'Configuration', inner});
 }
 
 /* ============ staff & access ============ */

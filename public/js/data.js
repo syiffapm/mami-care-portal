@@ -56,7 +56,7 @@ export const SERVICES = [
     steps:['Tell us your village or health centre','We show you where to go','With your permission, we tell the facility you are coming','They confirm you were seen, and the referral is closed'],
     aud:['pregnant','postpartum','parent'],
     note:'Nothing about you is shared with a facility unless you have given permission for that specific referral.',
-    cta:{label:'Join free',route:'#/register'}, cta2:{label:'Ask the helpdesk',route:'#/help'} }
+    cta:{label:'Search facilities now',route:'#/facilities'}, cta2:{label:'Join free',route:'#/register'} }
 ];
 
 /* ============ audiences (roles, not names) ============ */
@@ -492,10 +492,10 @@ export const cmsRole = key => CMS_ROLES.find(r=>r.key===key);
 
 /* Which sidebar sections each role can see. One CMS, access differs. */
 export const CMS_ACCESS = {
-  admin:    ['dashboard','content','helpdesk','facilities','staff'],
+  admin:    ['dashboard','content','clients','helpdesk','master','users','integration','reports','config'],
   reviewer: ['dashboard','content'],
   editor:   ['dashboard','content'],
-  analyst:  ['dashboard']
+  analyst:  ['dashboard','reports']
 };
 
 /* Who can move a content item between which states. */
@@ -548,15 +548,38 @@ export const HELPDESK_CASES = [
     channel:'SMS', priority:'urgent', status:'closed', received:'27 Aug 2026' }
 ];
 
-/* ============ facility directory (read-only, from the shared facility master) ============ */
+/* ============ facility directory (read-only, from the shared facility master) ============
+   `enrolled` and `referrals30d` are internal operational numbers — CMS-only.
+   The public-facing search (publicFacilities()) never exposes them: the spec
+   explicitly rules out publishing per-facility performance (NG-07 / BR-125). */
 export const FACILITIES = [
-  { code:'PP-CHBA-01', name:'Chbar Ampov Health Centre', province:'Phnom Penh', type:'Health Centre', enrolled:1240, referrals30d:38, phone:'023 xxx xxx' },
-  { code:'KD-TAKH-01', name:'Ta Khmau Referral Hospital', province:'Kandal', type:'Referral Hospital', enrolled:2110, referrals30d:64, phone:'024 xxx xxx' },
-  { code:'BB-OUCH-01', name:'Ou Char Health Centre', province:'Battambang', type:'Health Centre', enrolled:860, referrals30d:21, phone:'053 xxx xxx' },
-  { code:'SR-SLKR-01', name:'Slor Kram Health Centre', province:'Siem Reap', type:'Health Centre', enrolled:975, referrals30d:29, phone:'063 xxx xxx' },
-  { code:'RK-BANL-01', name:'Banlung Referral Hospital', province:'Ratanakiri', type:'Referral Hospital', enrolled:410, referrals30d:12, phone:'075 xxx xxx' },
-  { code:'PV-PREY-01', name:'Prey Veng Health Centre', province:'Prey Veng', type:'Health Centre', enrolled:730, referrals30d:18, phone:'043 xxx xxx' }
+  { code:'PP-CHBA-01', name:'Chbar Ampov Health Centre', province:'Phnom Penh', area:'Chbar Ampov', type:'Health Centre',
+    services:['Antenatal care','Delivery','Postnatal care','Immunisation','Family planning'], hours:'Mon–Sat 07:00–17:00',
+    enrolled:1240, referrals30d:38, phone:'023 890 111' },
+  { code:'KD-TAKH-01', name:'Ta Khmau Referral Hospital', province:'Kandal', area:'Ta Khmau', type:'Referral Hospital',
+    services:['Delivery','Emergency obstetric care','Postnatal care','Immunisation'], hours:'Open 24 hours',
+    enrolled:2110, referrals30d:64, phone:'024 890 222' },
+  { code:'BB-OUCH-01', name:'Ou Char Health Centre', province:'Battambang', area:'Ou Char', type:'Health Centre',
+    services:['Antenatal care','Postnatal care','Immunisation'], hours:'Mon–Sat 07:00–17:00',
+    enrolled:860, referrals30d:21, phone:'053 890 333' },
+  { code:'SR-SLKR-01', name:'Slor Kram Health Centre', province:'Siem Reap', area:'Slor Kram', type:'Health Centre',
+    services:['Antenatal care','Delivery','Family planning'], hours:'Mon–Sat 07:00–17:00',
+    enrolled:975, referrals30d:29, phone:'063 890 444' },
+  { code:'RK-BANL-01', name:'Banlung Referral Hospital', province:'Ratanakiri', area:'Banlung', type:'Referral Hospital',
+    services:['Delivery','Emergency obstetric care','Immunisation'], hours:'Open 24 hours',
+    enrolled:410, referrals30d:12, phone:'075 890 555' },
+  { code:'PV-PREY-01', name:'Prey Veng Health Centre', province:'Prey Veng', area:'Prey Veng town', type:'Health Centre',
+    services:['Antenatal care','Postnatal care','Family planning'], hours:'Mon–Sat 07:00–17:00',
+    enrolled:730, referrals30d:18, phone:'043 890 666' }
 ];
+export const PROVINCES = [...new Set(FACILITIES.map(f=>f.province))].sort();
+/* Safe subset for T0 (public, no login) facility search — never enrolment
+   counts or referral volume, per NG-07 and BR-125. */
+export const publicFacilities = () => FACILITIES.map(({code,name,province,area,type,services,hours,phone})=>
+  ({code,name,province,area,type,services,hours,phone}));
+
+export const HELPLINE_NUMBER = '1800 12 3456';
+export const HELPLINE_HOURS = '07:00–19:00, every day including weekends';
 
 /* ============ CMS staff & access ============ */
 export const STAFF = [
@@ -566,4 +589,71 @@ export const STAFF = [
   { name:'Heng Vibol', role:'editor', org:'MoH content team', status:'active' },
   { name:'Pich Rathana', role:'analyst', org:'MoWA M&E unit', status:'active' },
   { name:'Chea Sovann', role:'admin', org:'MoH', status:'suspended' }
+];
+
+/* ============ WS-2 Client & Operational Data (pseudonymised sample) ============
+   Real subscriber names and numbers are never shown in this tool — a
+   service_ref stands in, and the phone stays masked until someone gives a
+   reason to unmask it. Each unmask is meant to be logged (see AUDIT_SAMPLE). */
+export const CLIENT_SAMPLE = [
+  { ref:'MC-7QK2', stage:'Pregnant · week 22', facility:'Chbar Ampov Health Centre', verification:'verified', consent:'active', phoneMasked:'012 xxx x45' },
+  { ref:'MC-3PL9', stage:'Postpartum · week 3', facility:'Ta Khmau Referral Hospital', verification:'verified', consent:'active', phoneMasked:'098 xxx x12' },
+  { ref:'MC-9DF4', stage:'Child · 6 months', facility:'Ou Char Health Centre', verification:'verified', consent:'active', phoneMasked:'077 xxx x88' },
+  { ref:'MC-1XN7', stage:'Pregnant · week 9', facility:'—', verification:'provisional', consent:'active', phoneMasked:'016 xxx x33' },
+  { ref:'MC-5TR2', stage:'Child · 18 months', facility:'Slor Kram Health Centre', verification:'verified', consent:'paused', phoneMasked:'070 xxx x21' },
+  { ref:'MC-8WY6', stage:'Pregnant · week 31', facility:'Banlung Referral Hospital', verification:'verified', consent:'active', phoneMasked:'011 xxx x64' }
+];
+
+/* ============ WS-3 Master Data: controlled value lists (a sample) ============ */
+export const CONTROLLED_LISTS = [
+  { name:'Referral reason category (non-diagnostic)', values:['Routine antenatal check','Blood pressure follow-up','Nutrition follow-up','Delivery preparation','Postnatal check','Immunisation'] },
+  { name:'Missed-appointment reason', values:['Transport','Cost','Time / work','Unaware','Served elsewhere','Other'] },
+  { name:'Support referral category', values:['Protection','Psychosocial','Child protection','Socioeconomic','Legal / family','Disability'] },
+  { name:'Content topic', values:['ANC','Nutrition','Delivery preparation','PNC','Breastfeeding','Immunisation','Family planning','Child development'] }
+];
+
+/* ============ WS-5 Integration & Data Quality (status, no live systems yet) ============ */
+export const INTEGRATIONS = [
+  { id:'API-01', name:'Facility Master Sync', direction:'in', level:0, status:'connected', lastSync:'4 Sep 2026, 06:00' },
+  { id:'API-02', name:'Referral Directory Sync', direction:'in', level:0, status:'connected', lastSync:'4 Sep 2026, 06:00' },
+  { id:'API-03', name:'Aggregate Denominator Extract', direction:'in', level:1, status:'pending', lastSync:'—' },
+  { id:'API-05', name:'ANC Event', direction:'in', level:2, status:'not_configured', lastSync:'—' },
+  { id:'API-06', name:'Delivery Event', direction:'in', level:2, status:'not_configured', lastSync:'—' },
+  { id:'API-08', name:'Immunization Event', direction:'in', level:2, status:'not_configured', lastSync:'—' },
+  { id:'API-10', name:'Channel Gateway (SMS/IVR)', direction:'in/out', level:0, status:'connected', lastSync:'4 Sep 2026, 14:02' }
+];
+export const INTEGRATION_QUEUE = { queued:6, deadLetter:0, reconciliation:2 };
+
+/* ============ WS-6 Reports & Audit ============ */
+export const REPORT_CATEGORIES = [
+  'Coverage & enrolment','Reach & communication','Appointments','Content',
+  'Helpdesk & quality','Referrals','Lifecycle','Equity & cost','Data quality'
+];
+export const AUDIT_SAMPLE = [
+  { at:'4 Sep 2026 14:02', actor:'Sok Dara (admin)', action:'CNT-APPROVE', subject:'after-a-birth v1', note:'Approved & published' },
+  { at:'4 Sep 2026 09:41', actor:'system', action:'MSG-SUPPRESS', subject:'MC-5TR2', note:'Quiet hours (21:00–07:00)' },
+  { at:'3 Sep 2026 18:20', actor:'Helpdesk operator', action:'CASE-ESCALATE', subject:'CASE-4822', note:'Danger-sign keyword detected' },
+  { at:'3 Sep 2026 11:05', actor:'Chan Sopheak (reviewer)', action:'CNT-REJECT', subject:'foods-to-limit v2', note:'Sent back to draft' },
+  { at:'2 Sep 2026 08:30', actor:'Pich Rathana (analyst)', action:'RPT-RUN', subject:'Coverage & enrolment', note:'Monthly export requested' }
+];
+
+/* ============ WS-7 Configuration — parameters editable without a code release ============ */
+export const CONFIG_PARAMS = [
+  { key:'quiet_hours', label:'Quiet hours', value:'21:00–07:00' },
+  { key:'freq_cap', label:'Frequency cap (routine, combined across episodes)', value:'3 messages / week' },
+  { key:'freq_cap_supporter', label:'Frequency cap (family supporter)', value:'1 message / week' },
+  { key:'reminder_offsets', label:'Appointment reminder offsets', value:'H-7, H-1, H-0' },
+  { key:'missed_grace', label:'Missed-appointment grace period', value:'14 days' },
+  { key:'max_channel_attempts', label:'Max attempts per channel before fallback', value:'3' },
+  { key:'nonresponse_threshold', label:'Non-response threshold to reduce frequency', value:'4 in a row' },
+  { key:'dup_suppress', label:'Cross-channel duplicate suppression window', value:'24 hours' },
+  { key:'ivr_target', label:'Target outbound IVR call length', value:'90 seconds' },
+  { key:'helpdesk_first_response', label:'Helpdesk first-response SLA', value:'1 business day' },
+  { key:'helpdesk_resolution', label:'Helpdesk resolution SLA', value:'5 business days' },
+  { key:'urgent_referral_sla', label:'Urgent referral time to "contacted"', value:'24 hours' },
+  { key:'cert_validity', label:'Staff certification validity', value:'12 months' },
+  { key:'invite_expiry', label:'Account invitation expiry', value:'72 hours' },
+  { key:'max_pause', label:'Maximum client-requested pause', value:'8 weeks' },
+  { key:'max_supporters', label:'Max active family supporters per client', value:'2' },
+  { key:'public_cell_min', label:'Minimum cell size on public outputs', value:'10' }
 ];

@@ -2,7 +2,7 @@
    the router drops into #app. */
 import { I } from './icons.js';
 import { LANG, t, khNote } from './i18n.js';
-import { SERVICES, AUDIENCES, FAQ_GROUPS, NEWS, SC, svc, aud, news } from './data.js';
+import { SERVICES, AUDIENCES, FAQ_GROUPS, NEWS, SC, svc, aud, news, PROVINCES, publicFacilities, HELPLINE_NUMBER } from './data.js';
 import { tile, audTile, journeyWidget, newsCard, newsFeat, ctaBand, stepProgress } from './components.js';
 import { ENROLL, enrollCode } from './enroll-state.js';
 
@@ -522,6 +522,54 @@ export function pageAbout(){return `
 </section>
 ${ctaBand()}`;}
 
+
+/* ============ facility search — public, no account needed ============
+   Searchable by name/area/province rather than GPS: precise location is
+   never collected or stored (privacy rule), so this is a directory, not
+   a live map. Each card links out to a map by place name for directions,
+   and only ever shows the fields safe for the public (no enrolment or
+   referral-volume figures — those never appear outside the CMS). */
+function facilityCard(f){
+  const mapsQuery = encodeURIComponent(`${f.name}, ${f.area}, ${f.province}, Cambodia`);
+  return `<div class="fac-card" data-province="${f.province}" data-type="${f.type}">
+    <div class="fac-head"><span class="ci" style="background:var(--accent-soft);color:var(--accent)">${I.pin}</span>
+      <div><h3 style="font-size:1rem">${f.name}</h3><span class="small">${f.type} · ${f.area}, ${f.province}</span></div></div>
+    <div class="chips" style="margin-top:.7rem">${f.services.map(s=>`<span class="chip" style="cursor:default">${s}</span>`).join('')}</div>
+    <p class="small" style="margin-top:.7rem">${I.clock} ${f.hours}</p>
+    <div class="cta-row" style="margin-top:.8rem">
+      <a class="btn btn-ghost btn-sm" href="tel:${f.phone.replace(/\s+/g,'')}">${I.phone} ${f.phone}</a>
+      <a class="btn btn-ghost btn-sm" href="https://www.google.com/maps/search/?api=1&query=${mapsQuery}" target="_blank" rel="noopener">${I.pin} ${LANG?'បើកក្នុងផែនទី':'Open in Maps'} ↗</a>
+    </div>
+  </div>`;
+}
+export function pageFacilities(){
+  const all = publicFacilities();
+  return `
+<section>
+  <div class="wrap">
+    <p class="crumb"><a href="#/">${t('nav_home')}</a> ${I.sep} <span>Find a health centre</span></p>
+    <div class="sec-head" style="margin-top:1rem"><p class="eyebrow">${LANG?'ស្វែងរកសេវាថែទាំ':'Find care near you'}</p>
+      <h2 style="font-size:clamp(1.8rem,4vw,2.5rem)">${LANG?'ស្វែងរកមណ្ឌលសុខភាព ឬមន្ទីរពេទ្យបញ្ជូនបន្ត។':'Search for a health centre or referral hospital.'}</h2>
+      <p>${LANG?'យើងមិនប្រើទីតាំង GPS ត្រឹមត្រូវទេ — ស្វែងរកតាមខេត្ត ឬឈ្មោះ ហើយបើកក្នុងផែនទីសម្រាប់ទិសដៅ។'
+        :'We never store your precise location — search by province or name, then open a result in Maps for directions.'}</p></div>
+    <div class="cms-filters" style="margin-bottom:1.4rem">
+      <select id="facProvince" style="font:inherit;font-size:.86rem;padding:.5rem .8rem;border-radius:8px;border:1.5px solid var(--line);background:var(--surface)">
+        <option value="">${LANG?'គ្រប់ខេត្ត':'All provinces'}</option>
+        ${PROVINCES.map(p=>`<option value="${p}">${p}</option>`).join('')}
+      </select>
+      <div class="segs" data-group="fac-type">
+        <button type="button" class="seg" data-v="" aria-pressed="true">${LANG?'ទាំងអស់':'All types'}</button>
+        <button type="button" class="seg" data-v="Health Centre" aria-pressed="false">${LANG?'មណ្ឌលសុខភាព':'Health Centre'}</button>
+        <button type="button" class="seg" data-v="Referral Hospital" aria-pressed="false">${LANG?'មន្ទីរពេទ្យបញ្ជូនបន្ត':'Referral Hospital'}</button>
+      </div>
+    </div>
+    <div id="facResults" class="grid-c c2">${all.map(facilityCard).join('')}</div>
+    <p id="facEmpty" class="small" hidden style="margin-top:1rem">${LANG?'រកមិនឃើញមណ្ឌលសុខភាពដែលត្រូវនឹងលក្ខខណ្ឌនេះទេ។ សូមទាក់ទងខ្សែជំនួយ។':'No facilities match that search. Try the free helpline instead.'}</p>
+    <div class="callout" style="margin-top:1.6rem"><p>${LANG?'រកមិនឃើញនៅទីនេះ?':'Can’t find it here?'} <a href="tel:${HELPLINE_NUMBER.replace(/\s+/g,'')}" style="color:var(--brand);font-weight:600">${LANG?'ហៅខ្សែជំនួយឥតគិតថ្លៃ':'Call the free helpline'}</a> ${LANG?`(${HELPLINE_NUMBER})`:`(${HELPLINE_NUMBER})`}</p></div>
+  </div>
+</section>
+${ctaBand()}`;
+}
 
 export function pageHelp(){
   const faqs=FAQ_GROUPS[1][1].slice(0,3).concat(FAQ_GROUPS[2][1].slice(0,2),FAQ_GROUPS[3][1].slice(1,2));
