@@ -36,7 +36,7 @@ export function renderJourney(i){
   p.innerHTML=`<div>
     <h3${LANG?' class="km"':''}>${LANG?s.kh:s.lb}</h3><p class="jk${LANG?'':' km'}">${LANG?s.lb+' · '+s.wk:s.kh+' · '+KH_WK[JOURNEY.indexOf(s)]}</p>
     <ul>${s.get.map(g=>`<li>${I.dot}<span>${g}</span></li>`).join('')}</ul>
-    <a class="btn btn-primary" style="margin-top:1.2rem" href="#/register">Join at this stage ${I.arrow}</a>
+    <a class="btn btn-primary" style="margin-top:1.2rem" href="#/app/join">Join at this stage ${I.arrow}</a>
   </div>
   <div class="jsample">
     <p class="cap">Example message</p>
@@ -70,7 +70,7 @@ export function ctaBand(){return `
   <div class="wrap inner">
     <div><h2>${t('cta_h')}</h2><p>${t('cta_p')}</p></div>
     <div class="cta-row" style="margin:0">
-      <a class="btn btn-rose" href="#/register">${t('join')} ${I.arrow}</a>
+      <a class="btn btn-rose" href="#/app/join">${t('join')} ${I.arrow}</a>
       <a class="btn btn-ghost" href="#/help">${t('cta_ask')}</a>
     </div>
   </div>
@@ -88,19 +88,28 @@ export const APP_TABS = [
   { key:'me',      href:'#/app/me',      icon:I.user,  en:'Me',      kh:'ខ្ញុំ' }
 ];
 
-export function appShell({active, title, back, inner}){
-  return `<div class="appscreen">
-    <div class="appbar">
-      ${back ? `<a class="appback" href="${back}" aria-label="${LANG?'ត្រឡប់ក្រោយ':'Back'}">${I.back}</a>`
-             : `<span class="appback" style="visibility:hidden">${I.back}</span>`}
-      <span class="apptitle${LANG?' km':''}">${title}</span>
-      <a class="appurgent" href="#/app/urgent" aria-label="${LANG?'ការណែនាំបន្ទាន់':'Urgent guidance'}">${I.shield}</a>
+/* A phone device frame around every #/app screen — on a real phone it
+   collapses to plain full-bleed (see the max-width:640px rule), but on a
+   desktop or tablet it reads unmistakably as "this is a phone app", not
+   a responsive website. `tabs:false` is used for join/login/onboarding,
+   before there is a "you" to show tabs for; the urgent-guidance shortcut
+   stays reachable even then. */
+export function appShell({active, title, back, inner, tabs=true}){
+  return `<div class="phoneframe">
+    <div class="phone-statusbar"><span>9:41</span><span class="phone-status-icons">••• LTE 🔋</span></div>
+    <div class="phonescreen">
+      <div class="appbar">
+        ${back ? `<a class="appback" href="${back}" aria-label="${LANG?'ត្រឡប់ក្រោយ':'Back'}">${I.back}</a>`
+               : `<span class="appback" style="visibility:hidden">${I.back}</span>`}
+        <span class="apptitle${LANG?' km':''}">${title}</span>
+        <a class="appurgent" href="#/app/urgent" aria-label="${LANG?'ការណែនាំបន្ទាន់':'Urgent guidance'}">${I.shield}</a>
+      </div>
+      <div class="appbody">${inner}</div>
+      ${tabs ? `<nav class="apptabs" aria-label="App sections">
+        ${APP_TABS.map(tb=>`<a href="${tb.href}" class="${active===tb.key?'on':''}">${tb.icon}<span>${LANG?tb.kh:tb.en}</span></a>`).join('')}
+      </nav>` : `<div class="apptabs-spacer"></div>`}
     </div>
-    <div class="appbody">${inner}</div>
-  </div>
-  <nav class="apptabs" aria-label="App sections">
-    ${APP_TABS.map(tb=>`<a href="${tb.href}" class="${active===tb.key?'on':''}">${tb.icon}<span>${LANG?tb.kh:tb.en}</span></a>`).join('')}
-  </nav>`;
+  </div>`;
 }
 
 /* "Step 2 of 4" progress used on the enrolment wizard. */
@@ -152,17 +161,30 @@ export function referralStepper(status){
 /* Every domain the build spec lists as needing an admin page (§11.2) is
    represented here as one flat, always-visible nav item — nothing is
    buried in a sub-menu — and CMS_ACCESS decides which ones a role sees. */
+/* Groups with `children` render as a non-clickable label followed by an
+   always-visible indented sub-list in the sidebar — sub-pages are never
+   shown as cards inside a page (Master Data, Reports & Audit). */
 export const CMS_NAV = [
-  { key:'dashboard',   href:'#/cms/dashboard',   icon:I.dash,    en:'Dashboard',        kh:'ផ្ទាំងគ្រប់គ្រង' },
-  { key:'content',     href:'#/cms/content',     icon:I.guide,   en:'Content',          kh:'មាតិកា' },
-  { key:'clients',     href:'#/cms/clients',     icon:I.table,   en:'Clients & data',   kh:'ទិន្នន័យអតិថិជន' },
-  { key:'helpdesk',    href:'#/cms/helpdesk',    icon:I.desk,    en:'Helpdesk queue',   kh:'ជួរជំនួយ' },
-  { key:'master',      href:'#/cms/master',      icon:I.ref,     en:'Master data',      kh:'ទិន្នន័យមេ' },
-  { key:'users',       href:'#/cms/users',       icon:I.user,    en:'Users & access',   kh:'អ្នកប្រើប្រាស់ និងសិទ្ធិ' },
-  { key:'integration', href:'#/cms/integration', icon:I.plug,    en:'Integration',      kh:'ការធ្វើសមាហរណកម្ម' },
-  { key:'reports',     href:'#/cms/reports',     icon:I.chart,   en:'Reports & audit',  kh:'របាយការណ៍ និងសវនកម្ម' },
-  { key:'config',      href:'#/cms/config',      icon:I.sliders, en:'Configuration',    kh:'ការកំណត់' }
+  { key:'dashboard',   href:'#/cms/dashboard',   icon:I.dash,  en:'Dashboard',      kh:'ផ្ទាំងគ្រប់គ្រង' },
+  { key:'content',     href:'#/cms/content',     icon:I.guide, en:'Content',        kh:'មាតិកា' },
+  { key:'clients',     href:'#/cms/clients',     icon:I.table, en:'Clients & data', kh:'ទិន្នន័យអតិថិជន' },
+  { key:'helpdesk',    href:'#/cms/helpdesk',    icon:I.desk,  en:'Helpdesk queue', kh:'ជួរជំនួយ' },
+  { key:'master', icon:I.ref, en:'Master data', kh:'ទិន្នន័យមេ', children:[
+      { key:'master-facilities', href:'#/cms/master/facilities', en:'Facilities',        kh:'មណ្ឌលសុខភាព' },
+      { key:'master-lists',      href:'#/cms/master/lists',      en:'Controlled lists',  kh:'បញ្ជីត្រួតពិនិត្យ' }
+  ]},
+  { key:'users',       href:'#/cms/users',       icon:I.user,    en:'Users & access', kh:'អ្នកប្រើប្រាស់ និងសិទ្ធិ' },
+  { key:'integration', href:'#/cms/integration', icon:I.plug,    en:'Integration',    kh:'ការធ្វើសមាហរណកម្ម' },
+  { key:'reports', icon:I.chart, en:'Reports & audit', kh:'របាយការណ៍ និងសវនកម្ម', children:[
+      { key:'reports-coverage',  href:'#/cms/reports/coverage',  en:'Coverage & enrolment',   kh:'ការគ្របដណ្តប់ និងចុះឈ្មោះ' },
+      { key:'reports-reach',     href:'#/cms/reports/reach',     en:'Reach & communication',  kh:'ការទាក់ទង' },
+      { key:'reports-referrals', href:'#/cms/reports/referrals', en:'Referrals',              kh:'ការបញ្ជូនបន្ត' },
+      { key:'reports-audit',     href:'#/cms/reports/audit',     en:'Audit log',              kh:'កំណត់ហេតុសវនកម្ម' }
+  ]},
+  { key:'config', href:'#/cms/config', icon:I.sliders, en:'Configuration', kh:'ការកំណត់' }
 ];
+/* A group is on-access if the role can see its key (parent gates all children). */
+export const CMS_NAV_FLAT = CMS_NAV.flatMap(n=>n.children ? n.children : [n]);
 
 export function cmsShell({role, active, title, inner}){
   const access = CMS_ACCESS[role] || [];
@@ -171,18 +193,23 @@ export function cmsShell({role, active, title, inner}){
     content: allLibraryItems().filter(x=>x.status==='pending_review').length,
     helpdesk: HELPDESK_CASES.filter(c=>c.status==='open').length
   };
+  const navHTML = CMS_NAV.filter(n=>access.includes(n.key)).map(n=>{
+    if(n.children){
+      const groupOn = n.children.some(c=>c.key===active);
+      return `<div class="cms-navgroup${groupOn?' on':''}">${n.icon}<span>${LANG?n.kh:n.en}</span></div>
+        <div class="cms-subnav">${n.children.map(c=>
+          `<a href="${c.href}" class="${active===c.key?'on':''}">${LANG?c.kh:c.en}</a>`).join('')}</div>`;
+    }
+    const badge = badges[n.key];
+    return `<a href="${n.href}" class="${active===n.key?'on':''}">${n.icon}<span>${LANG?n.kh:n.en}</span>${badge?`<b class="cms-badge">${badge}</b>`:''}</a>`;
+  }).join('');
   return `<div class="cmsapp">
     <aside class="cms-sidebar">
       <div class="cms-org">
         <span class="cms-org-mark">${I.heart}</span>
         <div><b>Mami Care</b><span>${LANG?'ប្រព័ន្ធគ្រប់គ្រង · CMS':'Admin Portal · CMS'}</span></div>
       </div>
-      <nav class="cms-nav">
-        ${CMS_NAV.filter(n=>access.includes(n.key)).map(n=>{
-          const badge = badges[n.key];
-          return `<a href="${n.href}" class="${active===n.key?'on':''}">${n.icon}<span>${LANG?n.kh:n.en}</span>${badge?`<b class="cms-badge">${badge}</b>`:''}</a>`;
-        }).join('')}
-      </nav>
+      <nav class="cms-nav">${navHTML}</nav>
       <div class="cms-sidebar-foot">
         <div class="cms-profile">
           <span class="cms-avatar">${I.user}</span>
@@ -203,6 +230,49 @@ export function cmsShell({role, active, title, inner}){
       </div>
       <div class="cms-content">${inner}</div>
     </main>
+  </div>`;
+}
+
+/* ============================================================
+   Chart primitives — plain CSS/SVG, no charting library. Used by
+   the Dashboard and the Reports & Audit pages.
+   ============================================================ */
+const CHART_COLORS = ['brand','accent','third','warn','ok','muted'];
+
+/** A horizontal bar list, e.g. "enrolment by province". */
+export function hbarChart(rows, {labelKey='label', valueKey='value', formatValue}={}){
+  const max = Math.max(1, ...rows.map(r=>r[valueKey]));
+  const fmt = formatValue || (v=>v.toLocaleString());
+  return `<div class="hbar-list">${rows.map(r=>`
+    <div class="hbar-row">
+      <span class="hbar-label">${r[labelKey]}</span>
+      <span class="hbar-track"><span class="hbar-fill" style="width:${Math.round(r[valueKey]/max*100)}%"></span></span>
+      <span class="hbar-value">${fmt(r[valueKey])}</span>
+    </div>`).join('')}</div>`;
+}
+
+/** A donut chart with a legend, e.g. "clients by stage". */
+export function donutChart(segments, {labelKey='label', valueKey='value', size=150, thickness=20}={}){
+  const total = segments.reduce((a,s)=>a+s[valueKey], 0) || 1;
+  const r = (size - thickness) / 2;
+  const c = 2 * Math.PI * r;
+  let acc = 0;
+  const arcs = segments.map((s,i)=>{
+    const frac = s[valueKey] / total;
+    const dash = frac * c;
+    const arc = `<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke-width="${thickness}"
+      style="stroke:var(--${CHART_COLORS[i%CHART_COLORS.length]})"
+      stroke-dasharray="${dash.toFixed(1)} ${(c-dash).toFixed(1)}" stroke-dashoffset="${(-acc).toFixed(1)}"
+      transform="rotate(-90 ${size/2} ${size/2})"/>`;
+    acc += dash;
+    return arc;
+  }).join('');
+  const legend = segments.map((s,i)=>`
+    <li><span class="donut-swatch" style="background:var(--${CHART_COLORS[i%CHART_COLORS.length]})"></span>
+      ${s[labelKey]} <b>${Math.round(s[valueKey]/total*100)}%</b></li>`).join('');
+  return `<div class="donut-row">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${arcs}</svg>
+    <ul class="donut-legend">${legend}</ul>
   </div>`;
 }
 

@@ -1,19 +1,22 @@
 /* Page renderers for the internal CMS demo under #/cms/*. One tool for
    content, the helpdesk queue, the facility directory, staff access and
    programme analytics/M&E — the same pages exist for everyone, but the
-   sidebar and the actions on a page differ by role. There is no real
-   login: picking a role on the entry screen is enough to try each view. */
+   sidebar and the actions on a page differ by role. Sign-in and the role
+   picker are both simulated: any email/password gets you in, and picking
+   a role is just this demo's way of trying each view. */
 import { I } from './icons.js';
 import { LANG } from './i18n.js';
 import {
   CMS_ROLES, CMS_ACCESS, CMS_CAN_EDIT, CMS_CAN_REVIEW, CONTENT_STATUS_LABEL,
   KPIS, HELPDESK_CASES, FACILITIES, STAFF, allLibraryItems, libraryTopic,
-  CLIENT_SAMPLE, CONTROLLED_LISTS, INTEGRATIONS, INTEGRATION_QUEUE,
-  REPORT_CATEGORIES, AUDIT_SAMPLE, CONFIG_PARAMS
+  CLIENT_SAMPLE, CONTROLLED_LISTS, INTEGRATIONS, INTEGRATION_QUEUE, AUDIT_SAMPLE, CONFIG_PARAMS,
+  STAGE_COUNTS, TOTAL_CLIENTS, ENROLLMENT_BY_PROVINCE, CHANNEL_MIX, ENROLMENT_ROUTES,
+  REFERRALS, REFERRAL_STATUS_STEPS
 } from './data.js';
-import { cmsShell } from './components.js';
+import { cmsShell, hbarChart, donutChart, statusPill } from './components.js';
 
 const canSee = (role, section) => (CMS_ACCESS[role]||[]).includes(section);
+const kpi = key => KPIS.find(k=>k.key===key);
 
 /* Mutators — the CMS and the mother-facing app both read the same
    in-memory arrays, so approving or withdrawing something here is
@@ -46,9 +49,49 @@ function caseStatusBadge(s){
   const label = {open:['Open','កំពុងរង់ចាំ'], answered:['Answered','បានឆ្លើយ'], closed:['Closed','បានបិទ']}[s];
   return `<span class="pill${tone?' pill-'+tone:''}">${LANG?label[1]:label[0]}</span>`;
 }
+function kpiCards(keys){
+  return `<div class="kpi-grid">${keys.map(kk=>{
+    const k = kpi(kk); if(!k) return '';
+    return `<div class="kpi-card ${k.tone}">
+      <div class="klabel">${k.label}</div>
+      <div class="kval">${k.current}</div>
+      <div class="ktarget">${LANG?'គោលដៅ':'target'} ${k.target}</div>
+      <div class="kpi-bar"><span style="width:${k.pct}%"></span></div>
+    </div>`;
+  }).join('')}</div>`;
+}
 
-/* ============ entry: pick a role (there is no real login) ============ */
-export function pageCmsLogin(){
+/* ============ sign-in (simulated) ============ */
+export function pageCmsCredentials(){
+  return `
+<section>
+  <div class="wrap" style="max-width:440px">
+    <p class="crumb"><a href="#/">${LANG?'ទំព័រដើម':'Home'}</a> ${I.sep} <span>Mami Care CMS</span></p>
+    <div class="formcard" style="margin-top:1.2rem">
+      <h1 style="font-size:1.5rem">Mami Care CMS</h1>
+      <p style="color:var(--ink-2);margin-top:.4rem;font-size:.9rem">${LANG
+        ?'សម្រាប់បុគ្គលិក និងដៃគូប៉ុណ្ណោះ។ នេះជាការសាកល្បង — បញ្ចូលអ្វីក៏បានដើម្បីបន្ត។'
+        :'For staff and partners only. This is a demo — any email and password will do.'}</p>
+      <form id="cmsLoginForm" style="margin-top:1.3rem;display:flex;flex-direction:column;gap:1rem">
+        <div class="field"><label for="cmsEmail">${LANG?'អ៊ីមែល':'Email'}</label>
+          <input id="cmsEmail" type="email" placeholder="you@moh.gov.kh" required></div>
+        <div class="field"><label for="cmsPassword">${LANG?'ពាក្យសម្ងាត់':'Password'}</label>
+          <input id="cmsPassword" type="password" placeholder="••••••••" required></div>
+        <button class="btn btn-primary" type="submit" style="width:100%">${LANG?'ចូល':'Sign in'} ${I.arrow}</button>
+      </form>
+      <p class="small" style="margin-top:1rem;text-align:center">${LANG
+        ?'ត្រូវការគណនី? សូមស្នើសុំតាមរយៈអ្នកគ្រប់គ្រងកម្មវិធីរបស់អ្នក។'
+        :'Need an account? Ask your programme administrator to invite you.'}</p>
+    </div>
+    <div class="callout" style="margin-top:1.2rem"><p>${LANG
+      ?'ការចូលទាំងអស់ត្រូវការការផ្ទៀងផ្ទាត់ពីរជាន់ (MFA) ក្នុងប្រព័ន្ធពិត។ ការសាកល្បងនេះលោត MFA ដើម្បីភាពសាមញ្ញ។'
+      :'Real sign-ins require MFA. This demo skips that step for simplicity.'}</p></div>
+  </div>
+</section>`;
+}
+
+/* ============ role picker (there is no real per-role login) ============ */
+export function pageCmsRolePicker(){
   const cards = CMS_ROLES.map(r=>`
     <button type="button" class="choice" data-role="${r.key}" style="width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;cursor:pointer;margin-bottom:.7rem">
       <span class="ci">${I.user}</span>
@@ -59,17 +102,17 @@ export function pageCmsLogin(){
   <div class="wrap" style="max-width:640px">
     <p class="crumb"><a href="#/">${LANG?'ទំព័រដើម':'Home'}</a> ${I.sep} <span>Mami Care CMS</span></p>
     <div class="formcard" style="margin-top:1.2rem">
-      <h1 style="font-size:1.6rem">Mami Care CMS</h1>
-      <p style="color:var(--ink-2);margin-top:.4rem;font-size:.95rem">${LANG
-        ?'ជ្រើសរើសតួនាទីរបស់អ្នក ដើម្បីមើលអ្វីដែលអ្នកនឹងឃើញ។ នេះជាការសាកល្បង — គ្មានការចូលគណនីពិតប្រាកដទេ។'
-        :'Pick a role to see what that person would see. This is a demo — there is no real login behind it.'}</p>
+      <h1 style="font-size:1.5rem">${LANG?'អ្នកជាអ្នកណានៅថ្ងៃនេះ?':'Which hat are you wearing today?'}</h1>
+      <p style="color:var(--ink-2);margin-top:.4rem;font-size:.9rem">${LANG
+        ?'ជ្រើសរើសតួនាទីរបស់អ្នក ដើម្បីមើលអ្វីដែលអ្នកនឹងឃើញ។ អ្នកអាចប្តូរបានគ្រប់ពេលពីរបារចំហៀង។'
+        :'Pick a role to see what that person would see. You can switch anytime from the sidebar.'}</p>
       <div id="cmsRoleCards" style="margin-top:1.3rem">${cards}</div>
     </div>
   </div>
 </section>`;
 }
 
-/* ============ dashboard — full KPI set for admin/analyst,
+/* ============ dashboard — full picture for admin/analyst,
    a content-focused summary for editor/reviewer ============ */
 export function pageCmsDashboard(role){
   if(role==='editor' || role==='reviewer'){
@@ -81,6 +124,9 @@ export function pageCmsDashboard(role){
       ['draft','Draft',''], ['withdrawn','Withdrawn','warn']
     ];
     const inner = `
+      <p class="small" style="margin-bottom:1.2rem">${role==='editor'
+        ? (LANG?'ស្ថានភាពមាតិកាទាំងអស់ និងព្រាងរបស់អ្នកផ្ទាល់។':'Content status across the board, and the drafts that are yours to move forward.')
+        : (LANG?'ស្ថានភាពមាតិកាទាំងអស់ និងអ្វីដែលកំពុងរង់ចាំការត្រួតពិនិត្យរបស់អ្នក។':'Content status across the board, and what is waiting on your clinical review.')}</p>
       <div class="kpi-grid">
         ${cards.map(([k,label,tone])=>`
           <div class="kpi-card${tone?' '+tone:''}">
@@ -100,18 +146,30 @@ export function pageCmsDashboard(role){
   }
 
   const inner = `
-    <div class="kpi-grid">
-      ${KPIS.map(k=>`
-        <div class="kpi-card ${k.tone}">
-          <div class="klabel">${k.label}</div>
-          <div class="kval">${k.current}</div>
-          <div class="ktarget">${LANG?'គោលដៅ':'target'} ${k.target}</div>
-          <div class="kpi-bar"><span style="width:${k.pct}%"></span></div>
-        </div>`).join('')}
+    <div class="stat-row">
+      <div class="stat-card"><div class="slabel">${LANG?'ចំនួនអតិថិជនសរុប':'Total enrolled clients'}</div>
+        <div class="sval">${TOTAL_CLIENTS.toLocaleString()}</div>
+        <div class="ssub">${LANG?`ក្នុងចំណោម ${ENROLLMENT_BY_PROVINCE.length} ខេត្តកំពូល`:`across the ${ENROLLMENT_BY_PROVINCE.length} leading provinces`}</div></div>
+      <div class="stat-card"><div class="slabel">${LANG?'បានទាក់ទងជោគជ័យ (៣០ថ្ងៃ)':'Successful contact (30-day)'}</div>
+        <div class="sval">${kpi('contact_30d').current}</div>
+        <div class="ssub">${LANG?'គោលដៅ':'target'} ${kpi('contact_30d').target}</div></div>
+      <div class="stat-card"><div class="slabel">${LANG?'ខេត្តដែលបានទៅដល់':'Provinces reached'}</div>
+        <div class="sval">${ENROLLMENT_BY_PROVINCE.length}</div>
+        <div class="ssub">${LANG?'នៃ ២៥ ខេត្តទាំងអស់':'of 25 nationally'}</div></div>
     </div>
-    <div class="callout"><p>${LANG
-      ?'នេះជាការវាស់វែងកម្មវិធីដូចគ្នាដែលកំណត់ក្នុងឯកសារតម្រូវការអាជីវកម្ម (BRD-01 §2.2)។ ពណ៌លឿងបង្ហាញពីចំណុចដែលនៅក្រោមគោលដៅ។'
-      :'These are the exact programme measures defined in the business requirements (BRD-01 §2.2). Amber means below target — not a fault, just where to look next.'}</p></div>
+
+    <div class="chart-grid-2">
+      <div class="chart-card"><h3>${LANG?'អតិថិជនតាមដំណាក់កាល':'Clients by stage'}</h3>
+        ${donutChart(STAGE_COUNTS, {labelKey: LANG?'kh':'label', valueKey:'count'})}</div>
+      <div class="chart-card"><h3>${LANG?'ការចុះឈ្មោះតាមខេត្ត (កំពូល ៨)':'Enrolment by province (top 8)'}</h3>
+        ${hbarChart(ENROLLMENT_BY_PROVINCE, {labelKey:'province', valueKey:'count'})}</div>
+    </div>
+
+    <p class="eyebrow" style="display:block;margin-bottom:.8rem">${LANG?'ការវាស់វែងកម្មវិធី':'Programme KPIs'}</p>
+    ${kpiCards(KPIS.map(k=>k.key))}
+    <div class="callout" style="margin-top:1.4rem"><p>${LANG
+      ?'នេះជាការវាស់វែងកម្មវិធីដូចគ្នាដែលកំណត់ក្នុងឯកសារតម្រូវការអាជីវកម្ម (BRD-01 §2.2)។ ពណ៌លឿងបង្ហាញពីចំណុចដែលនៅក្រោមគោលដៅ។ សម្រាប់ការវិភាគស៊ីជម្រៅ សូមមើល '
+      :'These are the exact programme measures from the business requirements (BRD-01 §2.2). Amber means below target — not a fault, just where to look next. For deeper cuts, see '}<a href="#/cms/reports/coverage" style="color:var(--brand);font-weight:600">${LANG?'របាយការណ៍ និងសវនកម្ម':'Reports & audit'}</a>.</p></div>
   `;
   return cmsShell({role, active:'dashboard', title: LANG?'ផ្ទាំងគ្រប់គ្រង':'Dashboard', inner});
 }
@@ -157,6 +215,7 @@ export function pageCmsContentDetail(role, slug){
     actions.push(`<button class="btn btn-primary" data-cms-action="republish" data-slug="${slug}">${LANG?'ផ្សព្វផ្សាយឡើងវិញ':'Republish'}</button>`);
 
   const inner = `
+    <p class="crumb" style="margin-bottom:1.1rem"><a href="#/cms/content">${LANG?'មាតិកា':'Content'}</a> ${I.sep} <span>${item.title}</span></p>
     <p class="eyebrow">${LANG?topic?.kh:topic?.name}</p>
     <h2 style="font-size:1.4rem;margin:.3rem 0 .5rem">${item.title}</h2>
     ${statusBadge(item.status)}
@@ -187,8 +246,8 @@ export function pageCmsHelpdesk(role){
     </tr>`).join('');
   const inner = `
     <p class="small" style="margin-bottom:1rem">${LANG
-      ?'សំណួរបន្ទាន់ត្រូវបានឆ្លងកាត់ការឆ្លើយឆ្លងស្វ័យប្រវត្តិ ហើយមកដល់ទីនេះភ្លាមៗ។'
-      :'Urgent questions skip the automated answer and land here immediately.'}</p>
+      ?'សំណួរបន្ទាន់ត្រូវបានឆ្លងកាត់ការឆ្លើយឆ្លងស្វ័យប្រវត្តិ ហើយមកដល់ទីនេះភ្លាមៗ។ សំណួរដែលបានសួរនៅក្នុងកម្មវិធីលេចឡើងទីនេះភ្លាមៗ។'
+      :'Urgent questions skip the automated answer and land here immediately — as do any questions asked live in the app.'}</p>
     <div class="cms-table-wrap"><table class="cms-table">
       <thead><tr><th>${LANG?'ករណី':'Case'}</th><th>${LANG?'សំណួរ':'Question'}</th><th>${LANG?'ពី':'From'}</th><th>${LANG?'ឆានែល':'Channel'}</th><th>${LANG?'អាទិភាព':'Priority'}</th><th>${LANG?'ស្ថានភាព':'Status'}</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
@@ -197,14 +256,13 @@ export function pageCmsHelpdesk(role){
   return cmsShell({role, active:'helpdesk', title: LANG?'ជួរជំនួយ':'Helpdesk queue', inner});
 }
 
-/* ============ WS-3 Master Data: facility directory + controlled lists ============ */
-export function pageCmsMaster(role){
+/* ============ WS-3 Master Data ============ */
+export function pageCmsMasterFacilities(role){
   if(!canSee(role,'master')) return pageCmsDashboard(role);
   const rows = FACILITIES.map(f=>`
     <tr><td><b>${f.name}</b><br><span class="small">${f.code}</span></td><td>${f.province}</td><td>${f.type}</td>
       <td>${f.enrolled.toLocaleString()}</td><td>${f.referrals30d}</td><td>${f.phone}</td></tr>`).join('');
   const inner = `
-    <p class="eyebrow" style="display:block;margin-bottom:.7rem">${LANG?'ថតមណ្ឌលសុខភាព':'Facility directory'}</p>
     <p class="small" style="margin-bottom:1rem">${LANG
       ?'អានបានតែប៉ុណ្ណោះ — មកពីទីតាំងកណ្តាលរួម។ លេខទាំងនេះមិនចេញផ្សាយជាសាធារណៈទេ (គ្មានការប្រៀបធៀបប្រតិបត្តិការរវាងមណ្ឌល)។'
       :'Read-only here — from the shared facility master. These figures never appear on the public site (no per-facility performance comparisons).'}</p>
@@ -212,8 +270,12 @@ export function pageCmsMaster(role){
       <thead><tr><th>${LANG?'មណ្ឌលសុខភាព':'Facility'}</th><th>${LANG?'ខេត្ត':'Province'}</th><th>${LANG?'ប្រភេទ':'Type'}</th><th>${LANG?'ចុះឈ្មោះ':'Enrolled'}</th><th>${LANG?'ការបញ្ជូនបន្ត (៣០ថ្ងៃ)':'Referrals (30d)'}</th><th>${LANG?'ទូរស័ព្ទ':'Phone'}</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
-
-    <p class="eyebrow" style="display:block;margin:2rem 0 .7rem">${LANG?'បញ្ជីតម្លៃត្រួតពិនិត្យ':'Controlled value lists'}</p>
+  `;
+  return cmsShell({role, active:'master-facilities', title: LANG?'មណ្ឌលសុខភាព':'Facilities', inner});
+}
+export function pageCmsMasterLists(role){
+  if(!canSee(role,'master')) return pageCmsDashboard(role);
+  const inner = `
     <p class="small" style="margin-bottom:1rem">${LANG
       ?'ជម្រើសដែលបុគ្គលិកជ្រើសរើសពេលបំពេញទម្រង់ — មិនមែនអត្ថបទសេរីទេ ដើម្បីរក្សាទិន្នន័យស្អាត និងមិនធ្វើរោគវិនិច្ឆ័យ។'
       :'The options staff choose from when filling in a form — never free text, so data stays clean and non-diagnostic.'}</p>
@@ -225,7 +287,7 @@ export function pageCmsMaster(role){
         </div>`).join('')}
     </div>
   `;
-  return cmsShell({role, active:'master', title: LANG?'ទិន្នន័យមេ':'Master data', inner});
+  return cmsShell({role, active:'master-lists', title: LANG?'បញ្ជីត្រួតពិនិត្យ':'Controlled lists', inner});
 }
 
 /* ============ WS-2 Client & Operational Data (pseudonymised) ============ */
@@ -245,8 +307,8 @@ export function pageCmsClients(role){
     </tr>`).join('');
   const inner = `
     <p class="small" style="margin-bottom:1rem">${LANG
-      ?'គ្មានឈ្មោះ ឬលេខទូរស័ព្ទពេញលេញបង្ហាញនៅទីនេះទេ — លេខយោងសេវាតំណាងឱ្យអតិថិជននីមួយៗ។'
-      :'No real names appear here — a service reference stands in for each client, and contact details stay masked by default.'}</p>
+      ?`អតិថិជនសរុប ${TOTAL_CLIENTS.toLocaleString()} នាក់ត្រូវបានចុះឈ្មោះ។ ខាងក្រោមនេះជាគំរូតូចមួយប៉ុណ្ណោះ — គ្មានឈ្មោះ ឬលេខទូរស័ព្ទពេញលេញបង្ហាញនៅទីនេះទេ។`
+      :`${TOTAL_CLIENTS.toLocaleString()} clients are enrolled in total. Below is a small sample — no real names appear anywhere, and contact details stay masked by default.`}</p>
     <div class="cms-table-wrap"><table class="cms-table">
       <thead><tr><th>${LANG?'លេខយោង':'Service ref'}</th><th>${LANG?'ដំណាក់កាល':'Stage'}</th><th>${LANG?'មណ្ឌលសុខភាព':'Facility'}</th><th>${LANG?'ការផ្ទៀងផ្ទាត់':'Verification'}</th><th>${LANG?'ការយល់ព្រម':'Consent'}</th><th>${LANG?'ទំនាក់ទំនង':'Contact'}</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -285,14 +347,68 @@ export function pageCmsIntegration(role){
 }
 
 /* ============ WS-6 Reports & Audit ============ */
-export function pageCmsReports(role){
+export function pageCmsReportsCoverage(role){
   if(!canSee(role,'reports')) return pageCmsDashboard(role);
   const inner = `
-    <p class="eyebrow" style="display:block;margin-bottom:.7rem">${LANG?'ប្រភេទរបាយការណ៍':'Report categories'}</p>
-    <div class="grid-c c3" style="margin-bottom:2rem">
-      ${REPORT_CATEGORIES.map(c=>`<a class="tile" href="#/cms/dashboard" style="padding:1rem"><h3 style="font-size:.92rem">${c}</h3><span class="go" style="padding-top:.3rem">${LANG?'មើលនៅផ្ទាំងគ្រប់គ្រង':'See on Dashboard'} ${I.arrow}</span></a>`).join('')}
+    <div class="stat-row">
+      <div class="stat-card"><div class="slabel">${LANG?'ចុះឈ្មោះសរុប':'Total enrolled'}</div><div class="sval">${TOTAL_CLIENTS.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="slabel">${LANG?'អត្រាបញ្ចប់ការចុះឈ្មោះ':'Enrollment completion'}</div><div class="sval">${kpi('enroll_complete').current}</div><div class="ssub">${LANG?'គោលដៅ':'target'} ${kpi('enroll_complete').target}</div></div>
+      <div class="stat-card"><div class="slabel">${LANG?'ការយល់ព្រមនៅ ANC':'Consent at ANC'}</div><div class="sval">${kpi('consent_anc').current}</div><div class="ssub">${LANG?'គោលដៅ':'target'} ${kpi('consent_anc').target}</div></div>
     </div>
-    <p class="eyebrow" style="display:block;margin-bottom:.7rem">${LANG?'កំណត់ហេតុសវនកម្ម (គំរូ)':'Audit log (sample)'}</p>
+    <div class="chart-grid-2">
+      <div class="chart-card"><h3>${LANG?'ការចុះឈ្មោះតាមខេត្ត (កំពូល ៨)':'Enrolment by province (top 8)'}</h3>
+        ${hbarChart(ENROLLMENT_BY_PROVINCE, {labelKey:'province', valueKey:'count'})}</div>
+      <div class="chart-card"><h3>${LANG?'របៀបចូលរួម':'How people join'}</h3>
+        ${donutChart(ENROLMENT_ROUTES, {labelKey:'route', valueKey:'pct'})}</div>
+    </div>
+    <p class="eyebrow" style="display:block;margin-bottom:.8rem">${LANG?'អតិថិជនតាមដំណាក់កាល':'Clients by stage'}</p>
+    ${hbarChart(STAGE_COUNTS, {labelKey:'label', valueKey:'count'})}
+  `;
+  return cmsShell({role, active:'reports-coverage', title: LANG?'ការគ្របដណ្តប់ និងចុះឈ្មោះ':'Coverage & enrolment', inner});
+}
+
+export function pageCmsReportsReach(role){
+  if(!canSee(role,'reports')) return pageCmsDashboard(role);
+  const inner = `
+    <div class="chart-grid-2">
+      <div class="chart-card"><h3>${LANG?'សារតាមឆានែល':'Messages by channel'}</h3>
+        ${donutChart(CHANNEL_MIX, {labelKey:'channel', valueKey:'pct'})}</div>
+      <div class="chart-card"><h3>${LANG?'ការវាស់វែងទាក់ទង':'Reach measures'}</h3>
+        ${hbarChart(KPIS.filter(k=>['contact_30d','sessions','questions','pref_change'].includes(k.key))
+          .map(k=>({label:k.label, value:parseFloat(k.current)})), {labelKey:'label', valueKey:'value', formatValue:v=>v})}</div>
+    </div>
+    <p class="eyebrow" style="display:block;margin-bottom:.8rem">${LANG?'ការវាស់វែងកម្មវិធីពាក់ព័ន្ធ':'Related programme KPIs'}</p>
+    ${kpiCards(['contact_30d','sessions','questions','optout','pref_change','optout_time'])}
+  `;
+  return cmsShell({role, active:'reports-reach', title: LANG?'ការទាក់ទង':'Reach & communication', inner});
+}
+
+export function pageCmsReportsReferrals(role){
+  if(!canSee(role,'reports')) return pageCmsDashboard(role);
+  const counts = REFERRAL_STATUS_STEPS.map(s=>({
+    label: {suggested:'Suggested', accepted:'Accepted', contacted:'Contacted', attended:'Attended', closed:'Closed'}[s],
+    value: REFERRALS.filter(r=>r.status===s).length
+  }));
+  const rows = REFERRALS.map(r=>`
+    <tr><td>${r.reason}</td><td>${r.facility}</td><td>${r.when}</td><td>${statusPill(r.status)}</td></tr>`).join('');
+  const inner = `
+    <div class="stat-row">
+      <div class="stat-card"><div class="slabel">${LANG?'ការបញ្ជូនបន្តសរុប':'Total referrals'}</div><div class="sval">${REFERRALS.length}</div></div>
+      <div class="stat-card"><div class="slabel">${LANG?'អត្រាទទួលយក':'Acceptance rate'}</div><div class="sval">${kpi('referral_accept').current}</div><div class="ssub">${LANG?'គោលដៅ':'target'} ${kpi('referral_accept').target}</div></div>
+    </div>
+    <div class="chart-card" style="margin-bottom:1.6rem"><h3>${LANG?'តាមស្ថានភាព':'By status'}</h3>${hbarChart(counts, {labelKey:'label', valueKey:'value'})}</div>
+    <p class="eyebrow" style="display:block;margin-bottom:.8rem">${LANG?'ការបញ្ជូនបន្តថ្មីៗ':'Recent referrals'}</p>
+    <div class="cms-table-wrap"><table class="cms-table">
+      <thead><tr><th>${LANG?'មូលហេតុ':'Reason'}</th><th>${LANG?'មណ្ឌលសុខភាព':'Facility'}</th><th>${LANG?'ពេលវេលា':'When'}</th><th>${LANG?'ស្ថានភាព':'Status'}</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  `;
+  return cmsShell({role, active:'reports-referrals', title: LANG?'ការបញ្ជូនបន្ត':'Referrals', inner});
+}
+
+export function pageCmsReportsAudit(role){
+  if(!canSee(role,'reports')) return pageCmsDashboard(role);
+  const inner = `
     <p class="small" style="margin-bottom:1rem">${LANG
       ?'ឧបសម្ព័ន្ធតែប៉ុណ្ណោះ — គ្មានតួនាទីណាមួយ រួមទាំង Super Admin អាចកែប្រែ ឬលុបកំណត់ហេតុនេះបានទេ។'
       :'Append-only — no role, including Super Admin, can edit or delete this log.'}</p>
@@ -301,7 +417,7 @@ export function pageCmsReports(role){
       <tbody>${AUDIT_SAMPLE.map(a=>`<tr><td class="small">${a.at}</td><td>${a.actor}</td><td><span class="pill">${a.action}</span></td><td>${a.subject}</td><td class="small">${a.note}</td></tr>`).join('')}</tbody>
     </table></div>
   `;
-  return cmsShell({role, active:'reports', title: LANG?'របាយការណ៍ និងសវនកម្ម':'Reports & audit', inner});
+  return cmsShell({role, active:'reports-audit', title: LANG?'កំណត់ហេតុសវនកម្ម':'Audit log', inner});
 }
 
 /* ============ WS-7 Configuration ============ */
@@ -324,9 +440,9 @@ export function pageCmsConfig(role){
   return cmsShell({role, active:'config', title: LANG?'ការកំណត់':'Configuration', inner});
 }
 
-/* ============ staff & access ============ */
+/* ============ users & access ============ */
 export function pageCmsStaff(role){
-  if(!canSee(role,'staff')) return pageCmsDashboard(role);
+  if(!canSee(role,'users')) return pageCmsDashboard(role);
   const rows = STAFF.map((s,i)=>`
     <tr data-staff="${i}">
       <td>${s.name}</td><td>${s.org}</td>
@@ -350,5 +466,5 @@ export function pageCmsStaff(role){
       <tbody>${rows}</tbody>
     </table></div>
   `;
-  return cmsShell({role, active:'staff', title: LANG?'បុគ្គលិក និងសិទ្ធិ':'Staff & access', inner});
+  return cmsShell({role, active:'users', title: LANG?'អ្នកប្រើប្រាស់ និងសិទ្ធិ':'Users & access', inner});
 }

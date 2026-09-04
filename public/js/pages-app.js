@@ -8,10 +8,11 @@ import { LANG, t, khNote } from './i18n.js';
 import {
   DEMO_PROFILE, LIBRARY_TOPICS, LIBRARY_ITEMS, libraryTopic, libraryItem, itemsInTopic,
   SUGGESTED_QUESTIONS, URGENT_SIGNS, REFERRALS, referral, CONSENT_TYPES,
-  HELPLINE_NUMBER, HELPLINE_HOURS
+  HELPLINE_NUMBER, HELPLINE_HOURS, SC
 } from './data.js';
-import { appShell, contentRow, statusPill, referralStepper } from './components.js';
+import { appShell, contentRow, statusPill, referralStepper, stepProgress } from './components.js';
 import { MY_CASES, getCase } from './ask-state.js';
+import { ENROLL, enrollCode } from './enroll-state.js';
 
 /* Small 404 that stays inside the app shell rather than dropping back to
    the marketing "page not found" screen. */
@@ -463,4 +464,212 @@ export function pageAppPhone(){
     </div>
   `;
   return appShell({active:'me', title: LANG?'ប្តូរលេខទូរស័ព្ទ':'Change phone number', back:'#/app/me', inner});
+}
+
+/* ============================================================
+   Join Mami Care — a five-step wizard, inside the phone shell.
+   This IS the front door into the app: the marketing site only ever
+   previews what is here; every interactive feature lives past this
+   wizard (or past Log in, for a returning visitor). Explain → contact
+   & preference → consent → stage → confirmation, following BRD-01
+   §7.1. Each step is its own hash (#/app/join/2 …) so back/forward and
+   reload behave sensibly; the values in between live in ENROLL
+   (enroll-state.js) rather than in the DOM. No bottom tabs yet — there
+   is no "you" to show tabs for until this finishes.
+   ============================================================ */
+function joinShell(step, total, label, back, inner){
+  return appShell({tabs:false, back, title: LANG?'ចូលរួម Mami Care':'Join Mami Care', inner: `
+    ${step && step<=3 ? stepProgress(step, total, label) : ''}
+    ${inner}
+  `});
+}
+
+function joinStep1(){
+  const listen = title => `<span class="ci">${I.play}</span><div><h3>${title}</h3>`;
+  return joinShell(0,3,'', undefined, `
+    <h1 style="font-size:1.5rem">${LANG?'តើ Mami Care ជាអ្វី?':'What is Mami Care?'}</h1>
+    <p class="km" style="color:var(--brand);font-weight:600;margin-top:.3rem">${LANG?'What is Mami Care?':'តើ Mami Care ជាអ្វី?'}</p>
+    <div style="margin-top:1.2rem;display:flex;flex-direction:column;gap:0">
+      <div class="choice">${listen(LANG?'អ្នកនឹងទទួលបានអ្វី':'What you get')}<p>${LANG?'ការណែនាំតាមដំណាក់កាល ២–៤ សារក្នុងមួយសប្តាហ៍ ចាប់ពីការពិនិត្យផ្ទៃពោះលើកដំបូង រហូតដល់ខួបកំណើតទី ២ របស់កូន។':'Stage-matched guidance, about 2–4 messages a week, from your first antenatal visit to your child’s second birthday.'}</p></div></div>
+      <div class="choice">${listen(LANG?'ភាពញឹកញាប់':'How often')}<p>${LANG?'មិនដែលមានចន្លោះម៉ោង ៩យប់ ដល់ ៦ព្រឹកទេ ហើយអ្នកជ្រើសរើសពេលព្រឹក រសៀល ឬល្ងាច។':'Never between 9pm and 6am, and you choose morning, afternoon or evening.'}</p></div></div>
+      <div class="choice">${listen(LANG?'របៀបបញ្ឈប់':'How to stop')}<p>${LANG?'ឆ្លើយតបពាក្យ ឈប់ ឬ STOP ចំពោះសារណាមួយ គ្រប់ពេល។ អ្វីៗនឹងឈប់ក្នុងរយៈពេលមួយនាទី។':'Reply ឈប់ or STOP to any message, any time. Everything stops within a minute.'}</p></div></div>
+    </div>
+    <a class="btn btn-primary" style="width:100%;margin-top:1.3rem" href="#/app/join/2">${LANG?'ចាប់ផ្តើម':'Get started'} ${I.arrow}</a>
+    <p class="small" style="text-align:center;margin-top:.9rem">${LANG?'ធ្លាប់ចូលរួមរួចហើយ?':'Already joined?'} <a href="#/app/login" style="color:var(--brand);font-weight:600">${LANG?'ចូលគណនី':'Log in'}</a></p>
+  `);
+}
+
+function joinStep2(){
+  const e = ENROLL;
+  return joinShell(1,3,LANG?'ទំនាក់ទំនង និងចំណូលចិត្ត':'Contact & preference', '#/app/join', `
+    <h1 style="font-size:1.4rem">${LANG?'តើយើងអាចទាក់ទងអ្នកតាមរបៀបណា?':'How can we reach you?'}</h1>
+    <form id="regForm2" style="margin-top:1.2rem;display:flex;flex-direction:column;gap:1.1rem">
+      <div class="field"><label for="rph">${LANG?'លេខទូរស័ព្ទ':'Mobile number'}</label>
+        <input id="rph" type="tel" inputmode="tel" placeholder="0XX XXX XXX" value="${e.phone}" required>
+        <span class="hint">${LANG?'បណ្តាញទូរស័ព្ទណាមួយក៏បាន':'Any Cambodian network.'}</span></div>
+      <div class="field full">
+        <label>${LANG?'ភាសា':'Language'}</label>
+        <div class="segs" data-group="reg-lang">
+          <button type="button" class="seg" data-v="km" aria-pressed="${e.language==='km'}">ភាសាខ្មែរ</button>
+          <button type="button" class="seg" data-v="en" aria-pressed="${e.language==='en'}">English</button>
+        </div>
+      </div>
+      <div class="field full">
+        <label>${LANG?'តើគួរទាក់ទងអ្នកតាមមធ្យោបាយណា? (ជ្រើសរើសមួយ ឬច្រើន)':'How should we contact you? (choose one or more)'}</label>
+        <div class="segs" data-group="reg-chan" data-multi="1">
+          <button type="button" class="seg" data-v="sms" aria-pressed="${e.channel.includes('sms')}">SMS</button>
+          <button type="button" class="seg" data-v="voice" aria-pressed="${e.channel.includes('voice')}">${LANG?'ការហៅជាសំឡេង':'Khmer voice call'}</button>
+          <button type="button" class="seg" data-v="app" aria-pressed="${e.channel.includes('app')}">${LANG?'កម្មវិធី':'The app'}</button>
+        </div>
+      </div>
+      <div class="field full">
+        <label>${LANG?'ពេលវេលាដែលអ្នកចង់ទទួល':'Preferred time window'}</label>
+        <div class="segs" data-group="reg-time">
+          <button type="button" class="seg" data-v="morning" aria-pressed="${e.timeWindow==='morning'}">${LANG?'ព្រឹក':'Morning'}</button>
+          <button type="button" class="seg" data-v="afternoon" aria-pressed="${e.timeWindow==='afternoon'}">${LANG?'រសៀល':'Afternoon'}</button>
+          <button type="button" class="seg" data-v="evening" aria-pressed="${e.timeWindow==='evening'}">${LANG?'ល្ងាច':'Evening'}</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit" style="width:100%">${LANG?'បន្ត':'Continue'} ${I.arrow}</button>
+    </form>
+  `);
+}
+
+function joinStep3(){
+  const c = ENROLL.consents;
+  /* Every consent — including the required one — starts Off and stays a
+     real, clickable choice. "Required" only means the wizard blocks moving
+     on until it is ticked (BR-01-01); it must never be pre-checked or
+     locked, or there is nothing left for the visitor to actually consent to. */
+  const row = (key, name, desc, required) => `
+    <label class="cons">
+      <input type="checkbox" data-consent="${key}" ${c[key]?'checked':''}>
+      <span><b>${name}${required?(LANG?' · ចាំបាច់':' · required'):''}</b><span>${desc}</span></span>
+    </label>`;
+  return joinShell(2,3,LANG?'ការយល់ព្រម':'Consent', '#/app/join/2', `
+    <h1 style="font-size:1.4rem">${LANG?'តើអ្នកយល់ព្រមអ្វីខ្លះ?':'What do you agree to?'}</h1>
+    <p style="color:var(--ink-2);font-size:.9rem;margin-top:.4rem">${LANG?'ការអនុញ្ញាតនីមួយៗជាជម្រើសដាច់ដោយឡែក។ អ្នកអាចដកវិញបានគ្រប់ពេល។':'Each permission is its own choice. You can withdraw any of them later, at any time.'}</p>
+    <div class="consents" style="margin-top:1.1rem">
+      ${row('engagement', LANG?'ការណែនាំសុខភាព និងការរំលឹក':'Health guidance & reminders', LANG?'សារតាមដំណាក់កាល ប្រហែល ២–៤ ដងក្នុងមួយសប្តាហ៍ រហូតដល់កូនអាយុ ២ឆ្នាំ។ នេះជាការអនុញ្ញាតតែមួយគត់ដែលសេវានេះត្រូវការ។':'Messages timed to your stage, about 2–4 a week, until your child turns two. This is the one permission the service needs to run at all.', true)}
+      ${row('voice', LANG?'ការហៅជាសំឡេង':'Voice calls', LANG?'ការហៅជាសំឡេងខ្មែរដោយស្វ័យប្រវត្តិ ជំនួស ឬបន្ថែមលើអត្ថបទ។':'Automated Khmer voice calls, instead of or alongside text, at most twice a week.', false)}
+      ${row('referral', LANG?'ការចែករំលែកសម្រាប់ការបញ្ជូនបន្ត':'Sharing for a referral', LANG?'ប្រាប់ឱ្យមណ្ឌលសុខភាពដឹងថាអ្នកនឹងទៅ។ សួរម្តងទៀតដាច់ដោយឡែកជារៀងរាល់ពេល។':'Tell a health centre you are coming when you accept a referral. Asked again, separately, each time.', false)}
+      ${row('alt', LANG?'លេខទំនាក់ទំនងបន្ថែម':'An alternate contact', LANG?'អនុញ្ញាតឱ្យសាកល្បងលេខទីពីរ ប្រសិនបើមិនអាចទាក់ទងលេខទីមួយបាន។':'Let us try a second number if we cannot reach you on your first one.', false)}
+      ${row('research', LANG?'ការស្រាវជ្រាវកម្មវិធីដោយអនាមិក':'Anonymous programme research', LANG?'ប្រើប្រាស់ព័ត៌មានដោយដកឈ្មោះ និងលេខទូរស័ព្ទចេញ ដើម្បីជួយកែលម្អកម្មវិធី។':'Use information with your name and number removed to help improve the programme.', false)}
+    </div>
+    <p id="consentError" class="small" style="color:var(--urgent);margin-top:.8rem" hidden>${LANG?'ការណែនាំសុខភាពត្រូវការចាំបាច់ដើម្បីបន្ត — អ្វីផ្សេងទៀតជាជម្រើស។':'Health guidance is required to continue — everything else is optional.'}</p>
+    <button class="btn btn-primary" id="regStep3Next" style="width:100%;margin-top:1.1rem">${LANG?'បន្ត':'Continue'} ${I.arrow}</button>
+  `);
+}
+
+function joinStep4(){
+  const e = ENROLL;
+  return joinShell(3,3,LANG?'ដំណាក់កាលរបស់អ្នក':'Your stage', '#/app/join/3', `
+    <h1 style="font-size:1.4rem">${LANG?'តើអ្នកកំពុងស្ថិតនៅដំណាក់កាលណា?':'Where are you right now?'}</h1>
+    <p style="color:var(--ink-2);font-size:.9rem;margin-top:.4rem">${LANG?'ជ្រើសរើសអ្វីដែលអ្នកដឹង។ ឆ្មបអាចកែតម្រូវពេលក្រោយ — យើងមិនដែលទាយកាលបរិច្ឆេទឱ្យអ្នកទេ។':'Pick whichever you know. A midwife can correct this later — we never guess a date for you.'}</p>
+    <div class="segs" data-group="reg-stagemode" style="margin-top:1rem">
+      <button type="button" class="seg" data-v="edd" aria-pressed="${e.stageMode==='edd'}">${LANG?'ថ្ងៃកំណត់សម្រាល':'Expected due date'}</button>
+      <button type="button" class="seg" data-v="lmp" aria-pressed="${e.stageMode==='lmp'}">${LANG?'រដូវចុងក្រោយ':'Last period'}</button>
+      <button type="button" class="seg" data-v="dob" aria-pressed="${e.stageMode==='dob'}">${LANG?'ថ្ងៃកំណើតកូន':'Child’s birthday'}</button>
+      <button type="button" class="seg" data-v="unknown" aria-pressed="${e.stageMode==='unknown'}">${LANG?'មិនដឹង':'I don’t know'}</button>
+    </div>
+    <div id="stageDateWrap" class="field" style="margin-top:1rem;${e.stageMode==='unknown'?'display:none':''}">
+      <label for="stageDate">${LANG?'កាលបរិច្ឆេទ':'Date'}</label>
+      <input id="stageDate" type="date" value="${e.stageDate}">
+      <p id="stageCalc" class="small" style="margin-top:.4rem"></p>
+    </div>
+    <p id="stageUnknownNote" class="small" style="margin-top:.6rem;${e.stageMode==='unknown'?'':'display:none'}">
+      ${LANG?'មិនអីទេ — អ្នកនឹងទទួលបានការណែនាំដើមផ្ទៃពោះទូទៅ ហើយយើងនឹងសួរម្តងទៀតក្នុងមួយសប្តាហ៍។':'That’s fine — you’ll get general early-pregnancy guidance, and we’ll ask again in a week.'}</p>
+    <button class="btn btn-primary" id="regStep4Next" style="width:100%;margin-top:1.2rem">${LANG?'បន្ត':'Continue'} ${I.arrow}</button>
+  `);
+}
+
+function joinStep5(){
+  const code = enrollCode();
+  return joinShell(0,3,'', undefined, `
+    <div class="okpanel"><span style="color:var(--ok)">${I.check}</span>
+      <div><h3>${LANG?'អ្នកបានចុះឈ្មោះជាបណ្តោះអាសន្នរួចហើយ':'You’re provisionally enrolled'}</h3>
+      <p>${LANG?`សារស្វាគមន៍កំពុងផ្ញើទៅអ្នកតាម ${ENROLL.channel.join(' + ')||'SMS'}។ បង្ហាញលេខកូដនេះទៅឆ្មប នៅពេលពិនិត្យលើកក្រោយ ដើម្បីទទួលបានការរំលឹកចំពោះមណ្ឌលសុខភាព។`
+                :`Your welcome message is on its way by ${ENROLL.channel.join(' + ')||'SMS'}. Show this code to a midwife at your next visit to unlock facility reminders and referrals.`}</p></div>
+    </div>
+    <div class="stepbox" style="margin-top:1.2rem;text-align:center">
+      <h3 style="letter-spacing:.15em">${LANG?'លេខកូដផ្ទៀងផ្ទាត់របស់អ្នក':'Your verification code'}</h3>
+      <p style="font-family:var(--font-mono);font-size:1.6rem;font-weight:600;letter-spacing:.15em;margin-top:.3rem">${code}</p>
+    </div>
+    <a class="btn btn-primary" style="width:100%;margin-top:1.3rem" href="#/app/onboarding">${LANG?'បន្តទៅកម្មវិធីរបស់អ្នក':'Continue to your app'} ${I.arrow}</a>
+    <p class="small" style="text-align:center;margin-top:1rem">${LANG?'ដោយចូលរួម អ្នកយល់ព្រមតាម':'By joining you accept our'} <a href="#/privacy" style="color:var(--brand)">${LANG?'ការសន្យាភាពឯកជនរបស់យើង':'privacy promise'}</a>${LANG?'។ អ្នកអាចចាកចេញបានគ្រប់ពេលដោយឆ្លើយតបពាក្យ STOP។':'. You can leave at any time by replying STOP.'}</p>
+  `);
+}
+
+export function pageAppJoin(step){
+  const n = Math.min(5, Math.max(1, parseInt(step,10) || 1));
+  return [joinStep1, joinStep2, joinStep3, joinStep4, joinStep5][n-1]();
+}
+
+/* ============================================================
+   Log in — a returning visitor. No onboarding after this: they
+   already know their way around.
+   ============================================================ */
+export function pageAppLogin(){
+  const inner = `
+    <h1 style="font-size:1.5rem">${LANG?'ចូលគណនី':'Log in'}</h1>
+    <p style="color:var(--ink-2);margin-top:.5rem;font-size:.92rem">${LANG?'បញ្ចូលលេខទូរស័ព្ទដែលអ្នកបានចុះឈ្មោះ។ យើងនឹងផ្ញើលេខកូដ ៦ខ្ទង់ជូនអ្នក។':'Enter the number you joined with. We will text you a six-digit code.'}</p>
+    <form id="loginForm" style="margin-top:1.3rem;display:flex;flex-direction:column;gap:1rem">
+      <div class="field"><label for="lph">${LANG?'លេខទូរស័ព្ទ':'Mobile number'}</label><input id="lph" type="tel" inputmode="tel" placeholder="0XX XXX XXX" required></div>
+      <button class="btn btn-primary" type="submit" style="width:100%">${LANG?'ផ្ញើលេខកូដ':'Send me a code'}</button>
+    </form>
+    <div id="loginOk" hidden style="margin-top:1.2rem;display:flex;flex-direction:column;gap:1rem">
+      <div class="okpanel"><span style="color:var(--ok)">${I.check}</span><div><h3>${LANG?'បានផ្ញើលេខកូដ':'Code sent'}</h3><p>${LANG?'បញ្ចូលលេខ ៦ខ្ទង់ដែលទើបនឹងផ្ញើទៅអ្នក។':'Enter the six digits we just texted you.'}</p></div></div>
+      <div class="field"><label for="otp">${LANG?'លេខកូដ ៦ខ្ទង់':'Six-digit code'}</label><input id="otp" inputmode="numeric" maxlength="6" placeholder="––––––" style="letter-spacing:.5em;text-align:center;font-family:var(--font-mono)"></div>
+      <button class="btn btn-primary" id="loginContinue" style="width:100%">${LANG?'បន្ត':'Continue'}</button>
+    </div>
+    <p class="small" style="margin-top:1.1rem;text-align:center">${LANG?'មិនទាន់មានគណនី?':'No account yet?'} <a href="#/app/join" style="color:var(--brand);font-weight:600">${LANG?'ចូលរួមឥតគិតថ្លៃ':'Join free'}</a></p>
+    <div class="callout" style="margin-top:1.2rem"><p><strong>${LANG?'មិនអាចទទួលបានលេខកូដ?':'Cannot get the code?'}</strong> <a href="tel:${HELPLINE_NUMBER.replace(/\s+/g,'')}" style="color:var(--brand);font-weight:600">${LANG?'ហៅខ្សែជំនួយ':'Call the helpline'}</a> — ${LANG?'ពួកគេអាចផ្ទៀងផ្ទាត់អ្នកតាមវិធីផ្សេង។':'they can verify you another way.'}</p></div>
+  `;
+  return appShell({tabs:false, back:'#/', title: LANG?'ចូលគណនី':'Log in', inner});
+}
+
+/* ============================================================
+   Onboarding — three short screens shown once, right after joining,
+   so the app itself never has to be figured out by trial and error:
+   what the four tabs are for, how asking/getting help works, and
+   that the visitor stays in control throughout. A returning user who
+   just logged in skips straight to Today instead.
+   ============================================================ */
+const ONBOARD_SCREENS = [
+  {
+    img:'belly',
+    title:{en:'You’re in. Here’s your app.', km:'អ្នកបានចូលរួចហើយ។ នេះជាកម្មវិធីរបស់អ្នក។'},
+    body:{en:'Four tabs, always at the bottom: Today for what matters this week, Library to browse anything yourself, Ask for questions, and Me for your settings.',
+          km:'ផ្ទាំងទាំង ៤ នៅខាងក្រោមជានិច្ច៖ ថ្ងៃនេះ សម្រាប់អ្វីសំខាន់ក្នុងសប្តាហ៍នេះ បណ្ណាល័យ សម្រាប់អានដោយខ្លួនឯង សួរ សម្រាប់សំណួរ និង ខ្ញុំ សម្រាប់ការកំណត់របស់អ្នក។'}
+  },
+  {
+    img:'midwife',
+    title:{en:'Ask anytime, talk to a person when you need to.', km:'សួរបានគ្រប់ពេល និយាយជាមួយមនុស្សនៅពេលត្រូវការ។'},
+    body:{en:'The Ask tab answers common questions instantly and connects you to a real, Khmer-speaking operator for anything else — free, and never a diagnosis. The shield in the top corner always opens urgent guidance, no matter where you are.',
+          km:'ផ្ទាំង សួរ ឆ្លើយសំណួរធម្មតាភ្លាមៗ ហើយភ្ជាប់អ្នកទៅបុគ្គលិកជាមនុស្សពិត និយាយភាសាខ្មែរ សម្រាប់អ្វីផ្សេងទៀត — ឥតគិតថ្លៃ។ សញ្ញាខែលនៅជ្រុងខាងលើបើកការណែនាំបន្ទាន់បានគ្រប់ពេល។'}
+  },
+  {
+    img:'village',
+    title:{en:'You stay in control of every message.', km:'អ្នកគ្រប់គ្រងគ្រប់សារទាំងអស់។'},
+    body:{en:'Change your channel, language or quiet hours anytime in Me → Preferences. Review or withdraw any permission in the Consent centre. Leave whenever you want — nothing here is permanent.',
+          km:'ប្តូរឆានែល ភាសា ឬម៉ោងស្ងាត់បានគ្រប់ពេលនៅ ខ្ញុំ → ចំណូលចិត្ត។ ពិនិត្យ ឬដកការអនុញ្ញាតនៅមជ្ឈមណ្ឌលការយល់ព្រម។ ចាកចេញបានពេលណាក៏បាន — គ្មានអ្វីនៅទីនេះជាអចិន្ត្រៃយ៍ទេ។'}
+  }
+];
+export function pageAppOnboarding(step){
+  const n = Math.min(ONBOARD_SCREENS.length, Math.max(1, parseInt(step,10) || 1));
+  const s = ONBOARD_SCREENS[n-1];
+  const isLast = n===ONBOARD_SCREENS.length;
+  const inner = `
+    <a class="onb-skip" href="#/app/today">${LANG?'រំលង':'Skip'}</a>
+    <div style="text-align:center;padding-top:1.5rem">
+      <div class="onb-art" style="border-radius:16px;overflow:hidden">${SC[s.img]}</div>
+      <h1 style="font-size:1.35rem">${LANG?s.title.km:s.title.en}</h1>
+      <p style="color:var(--ink-2);font-size:.92rem;margin-top:.8rem;text-align:left">${LANG?s.body.km:s.body.en}</p>
+      <div class="onb-dots">${ONBOARD_SCREENS.map((_,i)=>`<span class="${i===n-1?'on':''}"></span>`).join('')}</div>
+      <a class="btn btn-primary" style="width:100%" href="${isLast?'#/app/today':'#/app/onboarding/'+(n+1)}">
+        ${isLast ? (LANG?'ចាប់ផ្តើមប្រើប្រាស់':'Get started') : (LANG?'បន្ត':'Next')} ${I.arrow}
+      </a>
+    </div>
+  `;
+  return appShell({tabs:false, back: n>1 ? '#/app/onboarding/'+(n-1) : undefined, title:'Mami Care', inner});
 }

@@ -9,20 +9,22 @@ import { renderJourney } from './components.js';
 import { ENROLL, enrollCode, gestationalWeeks } from './enroll-state.js';
 import { startAskCase, markHelpful, markNotHelpful, deliverOperatorReply } from './ask-state.js';
 import {
-  pageHome, pageServices, pageWho, pageJourney, detailPage, pageRegister,
-  pageLogin, pageNews, pageArticle, pageFaq, pageAbout, pageHelp,
+  pageHome, pageServices, pageWho, pageJourney, detailPage,
+  pageNews, pageArticle, pageFaq, pageAbout, pageHelp,
   pagePrivacy, pageMissing, pageFacilities
 } from './pages.js';
 import {
   pageAppToday, pageAppLibrary, pageAppTopic, pageAppContent, pageAppAsk, pageAppAskThread,
   pageAppUrgent, pageAppReferrals, pageAppReferralDetail, pageAppMe, pageAppCallback,
-  pageAppPreferences, pageAppConsent, pageAppData, pageAppPhone, pageAppMissing
+  pageAppPreferences, pageAppConsent, pageAppData, pageAppPhone, pageAppMissing,
+  pageAppJoin, pageAppLogin, pageAppOnboarding
 } from './pages-app.js';
-import { CMS, setCmsRole } from './cms-state.js';
+import { CMS, setCmsRole, setCmsLoggedIn, cmsSignOut } from './cms-state.js';
 import {
-  pageCmsLogin, pageCmsDashboard, pageCmsContent, pageCmsContentDetail,
-  pageCmsClients, pageCmsHelpdesk, pageCmsMaster, pageCmsStaff,
-  pageCmsIntegration, pageCmsReports, pageCmsConfig,
+  pageCmsCredentials, pageCmsRolePicker, pageCmsDashboard, pageCmsContent, pageCmsContentDetail,
+  pageCmsClients, pageCmsHelpdesk, pageCmsMasterFacilities, pageCmsMasterLists, pageCmsStaff,
+  pageCmsIntegration, pageCmsReportsCoverage, pageCmsReportsReach, pageCmsReportsReferrals, pageCmsReportsAudit,
+  pageCmsConfig,
   cmsSetContentStatus, cmsSetCaseStatus, cmsSetStaffRole, cmsToggleStaffStatus
 } from './pages-cms.js';
 
@@ -47,8 +49,6 @@ export function route(){
   else if(p[0]==='news'){html=pageNews();top='/news';}
   else if(p[0]==='privacy'){html=pagePrivacy();top='/help';}
   else if(p[0]==='facilities'){html=pageFacilities();top='/facilities';}
-  else if(p[0]==='register'){html=pageRegister(p[1]);}
-  else if(p[0]==='login'){html=pageLogin();}
   else if(isApp){html=routeApp(p);}
   else if(isCms){html=routeCms(p);}
   else {html=pageMissing();}
@@ -62,9 +62,14 @@ export function route(){
   window.scrollTo({top:0,behavior:'instant'});
 }
 
-/* Routes under #/app/* — the logged-in client-portal demo (BRD-01). */
+/* Routes under #/app/* — the logged-in client-portal demo (BRD-01).
+   join/login/onboarding live here too: the marketing site only ever
+   previews the app, so entering it always goes through one of these. */
 function routeApp(p){
   const sub = p[1];
+  if(sub==='join') return pageAppJoin(p[2]);
+  if(sub==='login') return pageAppLogin();
+  if(sub==='onboarding') return pageAppOnboarding(p[2]);
   if(!sub || sub==='today') return pageAppToday();
   if(sub==='library' && p[2] && p[3]) return pageAppContent(p[2], p[3]);
   if(sub==='library' && p[2]) return pageAppTopic(p[2]);
@@ -83,21 +88,28 @@ function routeApp(p){
   return pageAppMissing();
 }
 
-/* Routes under #/cms/* — one internal tool for content, the helpdesk
-   queue, facilities, staff access and analytics/M&E; sections are shown
-   or hidden by CMS.role rather than split into separate systems. */
+/* Routes under #/cms/* — one internal tool for content, clients, the
+   helpdesk queue, master data, users, integration, reports/audit and
+   configuration; sections are shown or hidden by CMS.role rather than
+   split into separate systems. Sign-in, then a role picker, both gate
+   everything else (simulated — see cms-state.js). */
 function routeCms(p){
-  if(!CMS.role || p[1]==='login') return pageCmsLogin();
+  if(!CMS.loggedIn || p[1]==='login') return pageCmsCredentials();
+  if(!CMS.role || p[1]==='role') return pageCmsRolePicker();
   const sub = p[1];
   if(!sub || sub==='dashboard') return pageCmsDashboard(CMS.role);
   if(sub==='content' && p[2]) return pageCmsContentDetail(CMS.role, p[2]);
   if(sub==='content') return pageCmsContent(CMS.role);
   if(sub==='clients') return pageCmsClients(CMS.role);
   if(sub==='helpdesk') return pageCmsHelpdesk(CMS.role);
-  if(sub==='master') return pageCmsMaster(CMS.role);
+  if(sub==='master' && p[2]==='lists') return pageCmsMasterLists(CMS.role);
+  if(sub==='master') return pageCmsMasterFacilities(CMS.role);
   if(sub==='users') return pageCmsStaff(CMS.role);
   if(sub==='integration') return pageCmsIntegration(CMS.role);
-  if(sub==='reports') return pageCmsReports(CMS.role);
+  if(sub==='reports' && p[2]==='reach') return pageCmsReportsReach(CMS.role);
+  if(sub==='reports' && p[2]==='referrals') return pageCmsReportsReferrals(CMS.role);
+  if(sub==='reports' && p[2]==='audit') return pageCmsReportsAudit(CMS.role);
+  if(sub==='reports') return pageCmsReportsCoverage(CMS.role);
   if(sub==='config') return pageCmsConfig(CMS.role);
   return pageCmsDashboard(CMS.role);
 }
@@ -153,7 +165,7 @@ function wireForms(){
   wireCms();
 }
 
-/* ---------- enrolment wizard (#/register/1..5) ---------- */
+/* ---------- enrolment wizard (#/app/join/1..5) ---------- */
 function updateStageCalc(){
   const inp = document.getElementById('stageDate');
   const out = document.getElementById('stageCalc');
@@ -175,7 +187,7 @@ function wireEnrolWizard(){
   if(f2) f2.addEventListener('submit', e=>{
     e.preventDefault();
     ENROLL.phone = document.getElementById('rph').value.trim();
-    location.hash = '#/register/3';
+    location.hash = '#/app/join/3';
   });
 
   const next3 = document.getElementById('regStep3Next');
@@ -189,7 +201,7 @@ function wireEnrolWizard(){
       const err = document.getElementById('consentError');
       if(!ENROLL.consents.engagement){ if(err) err.hidden = false; return; }
       if(err) err.hidden = true;
-      location.hash = '#/register/4';
+      location.hash = '#/app/join/4';
     });
   }
 
@@ -198,7 +210,7 @@ function wireEnrolWizard(){
   const next4 = document.getElementById('regStep4Next');
   if(next4) next4.addEventListener('click', ()=>{
     if(stageInp) ENROLL.stageDate = stageInp.value;
-    location.hash = '#/register/5';
+    location.hash = '#/app/join/5';
   });
 }
 
@@ -368,12 +380,22 @@ function wireHelpfulLinks(){
 /* ---------- CMS: role picker, role switcher, content workflow,
    helpdesk queue actions, staff role/status changes ---------- */
 function wireCms(){
+  const loginForm = document.getElementById('cmsLoginForm');
+  if(loginForm) loginForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    setCmsLoggedIn(true);
+    location.hash = '#/cms/role';
+  });
+
   const roleCards = document.getElementById('cmsRoleCards');
   if(roleCards) roleCards.addEventListener('click', e=>{
     const b = e.target.closest('[data-role]'); if(!b) return;
     setCmsRole(b.dataset.role);
     location.hash = '#/cms/dashboard';
   });
+
+  const exitBtn = document.querySelector('.cms-exit');
+  if(exitBtn) exitBtn.addEventListener('click', ()=>{ cmsSignOut(); });
 
   const roleSelect = document.getElementById('cmsRoleSelect');
   if(roleSelect) roleSelect.addEventListener('change', ()=>{
@@ -448,8 +470,8 @@ function paintChrome(top){
   document.getElementById('mobnav').innerHTML =
     NAVL.map(l=>`<a class="ml" href="${l[0]}" data-r="${l[1]}"${l[1]===top?' aria-current="page"':''}>${t(l[2])} ${I.sep}</a>`).join('')
     + `<div class="macts">
-         <a class="btn btn-ghost" href="#/login">${t('login')}</a>
-         <a class="btn btn-primary" href="#/register">${t('join')}</a>
+         <a class="btn btn-ghost" href="#/app/login">${t('login')}</a>
+         <a class="btn btn-primary" href="#/app/join">${t('join')}</a>
          <button class="langbtn" type="button" data-lang style="justify-content:center;min-height:46px">${LANG?'English':'ភាសាខ្មែរ'}</button>
        </div>`;
   document.getElementById('hdrLogin').textContent = t('login');

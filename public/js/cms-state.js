@@ -1,5 +1,8 @@
-/* Which CMS role the visitor is currently viewing as. There is no real
-   login behind this demo — picking a role on the #/cms screen is enough
-   to see what that role would and would not have access to. */
-export const CMS = { role: null };
+/* CMS session state: a simulated sign-in step, then which role the
+   visitor is viewing as. There is no real backend — signing in just
+   needs any email/password, and role-switching is a demo convenience
+   (the sidebar's "Switch role" control) rather than a security boundary. */
+export const CMS = { loggedIn: false, role: null };
+export function setCmsLoggedIn(v){ CMS.loggedIn = v; }
 export function setCmsRole(r){ CMS.role = r; }
+export function cmsSignOut(){ CMS.loggedIn = false; CMS.role = null; }

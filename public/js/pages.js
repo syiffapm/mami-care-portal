@@ -3,8 +3,7 @@
 import { I } from './icons.js';
 import { LANG, t, khNote } from './i18n.js';
 import { SERVICES, AUDIENCES, FAQ_GROUPS, NEWS, SC, svc, aud, news, PROVINCES, publicFacilities, HELPLINE_NUMBER } from './data.js';
-import { tile, audTile, journeyWidget, newsCard, newsFeat, ctaBand, stepProgress } from './components.js';
-import { ENROLL, enrollCode } from './enroll-state.js';
+import { tile, audTile, journeyWidget, newsCard, newsFeat, ctaBand } from './components.js';
 
 /* ============ pages ============ */
 export function pageHome(){return `
@@ -27,7 +26,7 @@ export function pageHome(){return `
       <h1${LANG?' class="km"':''}>${LANG?'ការថែទាំដែលដើរតាមអ្នក ចាប់ពីមានផ្ទៃពោះ រហូតដល់កូនអាយុ ២ ឆ្នាំ។':'Care that follows her, from pregnancy to her child’s <em>second birthday.</em>'}</h1>
       <p class="lede${LANG?' km':''}">${t('hero_lede')}</p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="#/register">${t('join')} ${I.arrow}</a>
+        <a class="btn btn-primary" href="#/app/join">${t('join')} ${I.arrow}</a>
         <a class="btn btn-ghost" href="#/services">${t('hero_cta2')}</a>
       </div>
       <div class="pill-row${LANG?' km':''}">
@@ -210,184 +209,6 @@ export function detailPage(item, kind){
 ${ctaBand()}`;}
 
 
-/* ============ join Mami Care — a five-step wizard ============
-   Explain → contact & preference → consent → stage → confirmation,
-   following BRD-01 §7.1. Each step is its own hash (#/register/2 …)
-   so back/forward and reload behave sensibly; the values in between
-   live in ENROLL (enroll-state.js) rather than in the DOM. */
-function enrollShell(step, total, label, inner){
-  return `
-<section>
-  <div class="wrap">
-    <p class="crumb"><a href="#/">${t('nav_home')}</a> ${I.sep} <span>Join Mami Care</span></p>
-    <div class="split" style="margin-top:1.2rem;align-items:start">
-      <div class="formcard">
-        ${step && step<=3 ? stepProgress(step, total, label) : ''}
-        ${inner}
-      </div>
-      <div>
-        <div class="stepbox"><h3>Other ways to join</h3><ol>
-          <li><span><b>Text us</b><br><span class="small">Send JOIN to the Mami Care short code shown on health-centre posters.</span></span></li>
-          <li><span><b>Scan a poster</b><br><span class="small">The QR code at your health centre opens this form already filled with the facility.</span></span></li>
-          <li><span><b>Ask a midwife or volunteer</b><br><span class="small">They can enrol you in under 90 seconds at your antenatal visit.</span></span></li>
-        </ol></div>
-        <div class="callout"><p><strong>No smartphone?</strong> That is fine. SMS and voice work on every handset, and joining by text costs you nothing.</p></div>
-        <div class="callout"><p><strong>Already joined?</strong> <a href="#/login" style="color:var(--brand);font-weight:600">Log in ${I.arrow}</a></p></div>
-      </div>
-    </div>
-  </div>
-</section>`;
-}
-
-function regStep1(){
-  const listen = title => `<span class="ci">${I.play}</span><div><h3>${title}</h3>`;
-  return enrollShell(0,3,'', `
-    <h1 style="font-size:1.7rem">What is Mami Care?</h1>
-    <p class="km" style="color:var(--brand);font-weight:600;margin-top:.3rem">តើ Mami Care ជាអ្វី?</p>
-    <div style="margin-top:1.3rem;display:flex;flex-direction:column;gap:0">
-      <div class="choice">${listen('What you get')}<p>Stage-matched guidance, about 2–4 messages a week, from your first antenatal visit to your child’s second birthday.</p></div></div>
-      <div class="choice">${listen('How often')}<p>Never between 9pm and 6am, and you choose morning, afternoon or evening.</p></div></div>
-      <div class="choice">${listen('How to stop')}<p>Reply ឈប់ or STOP to any message, any time. Everything stops within a minute.</p></div></div>
-    </div>
-    <a class="btn btn-primary" style="width:100%;margin-top:1.3rem" href="#/register/2">Get started ${I.arrow}</a>
-    <p class="small" style="text-align:center;margin-top:.9rem">Already joined? <a href="#/login" style="color:var(--brand);font-weight:600">Log in</a></p>
-  `);
-}
-
-function regStep2(){
-  const e = ENROLL;
-  return enrollShell(1,3,'Contact & preference', `
-    <h1 style="font-size:1.5rem">How can we reach you?</h1>
-    <form id="regForm2" style="margin-top:1.2rem;display:flex;flex-direction:column;gap:1.1rem">
-      <div class="fgrid">
-        <div class="field"><label for="rph">Mobile number</label>
-          <input id="rph" type="tel" inputmode="tel" placeholder="0XX XXX XXX" value="${e.phone}" required>
-          <span class="hint">Any Cambodian network.</span></div>
-        <div class="field"><label>Language</label>
-          <div class="segs" data-group="reg-lang">
-            <button type="button" class="seg" data-v="km" aria-pressed="${e.language==='km'}">ភាសាខ្មែរ</button>
-            <button type="button" class="seg" data-v="en" aria-pressed="${e.language==='en'}">English</button>
-          </div></div>
-      </div>
-      <div class="field full">
-        <label>How should we contact you? (choose one or more)</label>
-        <div class="segs" data-group="reg-chan" data-multi="1">
-          <button type="button" class="seg" data-v="sms" aria-pressed="${e.channel.includes('sms')}">SMS</button>
-          <button type="button" class="seg" data-v="voice" aria-pressed="${e.channel.includes('voice')}">Khmer voice call</button>
-          <button type="button" class="seg" data-v="app" aria-pressed="${e.channel.includes('app')}">The app</button>
-        </div>
-      </div>
-      <div class="field full">
-        <label>Preferred time window</label>
-        <div class="segs" data-group="reg-time">
-          <button type="button" class="seg" data-v="morning" aria-pressed="${e.timeWindow==='morning'}">Morning</button>
-          <button type="button" class="seg" data-v="afternoon" aria-pressed="${e.timeWindow==='afternoon'}">Afternoon</button>
-          <button type="button" class="seg" data-v="evening" aria-pressed="${e.timeWindow==='evening'}">Evening</button>
-        </div>
-      </div>
-      <button class="btn btn-primary" type="submit" style="width:100%">Continue ${I.arrow}</button>
-    </form>
-  `);
-}
-
-function regStep3(){
-  const c = ENROLL.consents;
-  /* Every consent — including the required one — starts Off and stays a
-     real, clickable choice. "Required" only means the wizard blocks moving
-     on until it is ticked (BR-01-01); it must never be pre-checked or
-     locked, or there is nothing left for the visitor to actually consent to. */
-  const row = (key, name, kh, desc, required) => `
-    <label class="cons">
-      <input type="checkbox" data-consent="${key}" ${c[key]?'checked':''}>
-      <span><b>${name}${required?' · required':''}</b><span>${desc}</span></span>
-    </label>`;
-  return enrollShell(2,3,'Consent', `
-    <h1 style="font-size:1.5rem">What do you agree to?</h1>
-    <p style="color:var(--ink-2);font-size:.92rem;margin-top:.4rem">Each permission is its own choice. You can withdraw any of them later, at any time.</p>
-    <div class="consents" style="margin-top:1.1rem">
-      ${row('engagement','Health guidance & reminders','ការណែនាំសុខភាព','Messages timed to your stage, about 2–4 a week, until your child turns two. This is the one permission the service needs to run at all.', true)}
-      ${row('voice','Voice calls','ការហៅជាសំឡេង','Automated Khmer voice calls, instead of or alongside text, at most twice a week.', false)}
-      ${row('referral','Sharing for a referral','ការចែករំលែកសម្រាប់ការបញ្ជូនបន្ត','Tell a health centre you are coming when you accept a referral. Asked again, separately, each time.', false)}
-      ${row('alt','An alternate contact','លេខទំនាក់ទំនងបន្ថែម','Let us try a second number if we cannot reach you on your first one.', false)}
-      ${row('research','Anonymous programme research','ការស្រាវជ្រាវកម្មវិធី','Use information with your name and number removed to help improve the programme.', false)}
-    </div>
-    <p id="consentError" class="small" style="color:var(--urgent);margin-top:.8rem" hidden>Health guidance is required to continue — everything else is optional.</p>
-    <button class="btn btn-primary" id="regStep3Next" style="width:100%;margin-top:1.1rem">Continue ${I.arrow}</button>
-  `);
-}
-
-function regStep4(){
-  const e = ENROLL;
-  return enrollShell(3,3,'Your stage', `
-    <h1 style="font-size:1.5rem">Where are you right now?</h1>
-    <p style="color:var(--ink-2);font-size:.92rem;margin-top:.4rem">Pick whichever you know. A midwife can correct this later — we never guess a date for you.</p>
-    <div class="segs" data-group="reg-stagemode" style="margin-top:1rem">
-      <button type="button" class="seg" data-v="edd" aria-pressed="${e.stageMode==='edd'}">Expected due date</button>
-      <button type="button" class="seg" data-v="lmp" aria-pressed="${e.stageMode==='lmp'}">Last period</button>
-      <button type="button" class="seg" data-v="dob" aria-pressed="${e.stageMode==='dob'}">Child’s birthday</button>
-      <button type="button" class="seg" data-v="unknown" aria-pressed="${e.stageMode==='unknown'}">I don’t know</button>
-    </div>
-    <div id="stageDateWrap" class="field" style="margin-top:1rem;${e.stageMode==='unknown'?'display:none':''}">
-      <label for="stageDate">Date</label>
-      <input id="stageDate" type="date" value="${e.stageDate}">
-      <p id="stageCalc" class="small" style="margin-top:.4rem"></p>
-    </div>
-    <p id="stageUnknownNote" class="small" style="margin-top:.6rem;${e.stageMode==='unknown'?'':'display:none'}">
-      That’s fine — you’ll get general early-pregnancy guidance, and we’ll ask again in a week.</p>
-    <button class="btn btn-primary" id="regStep4Next" style="width:100%;margin-top:1.2rem">Continue ${I.arrow}</button>
-  `);
-}
-
-function regStep5(){
-  const code = enrollCode();
-  return enrollShell(0,3,'', `
-    <div class="okpanel"><span style="color:var(--ok)">${I.check}</span>
-      <div><h3>You’re provisionally enrolled</h3>
-      <p>Your welcome message is on its way by ${ENROLL.channel.join(' + ')||'SMS'}. Show this code to a midwife at your next visit to unlock facility reminders and referrals.</p></div>
-    </div>
-    <div class="stepbox" style="margin-top:1.2rem;text-align:center">
-      <h3 style="letter-spacing:.15em">Your verification code</h3>
-      <p style="font-family:var(--font-mono);font-size:1.6rem;font-weight:600;letter-spacing:.15em;margin-top:.3rem">${code}</p>
-    </div>
-    <div class="cta-row" style="margin-top:1.3rem">
-      <a class="btn btn-primary" href="#/app/today">See your dashboard ${I.arrow}</a>
-      <a class="btn btn-ghost" href="#/journey">See what comes next</a>
-    </div>
-    <p class="small" style="text-align:center;margin-top:1rem">By joining you accept our <a href="#/privacy" style="color:var(--brand)">privacy promise</a>. You can leave at any time by replying STOP.</p>
-  `);
-}
-
-export function pageRegister(step){
-  const n = Math.min(5, Math.max(1, parseInt(step,10) || 1));
-  return [regStep1, regStep2, regStep3, regStep4, regStep5][n-1]();
-}
-
-export function pageLogin(){return `
-<section>
-  <div class="wrap">
-    <p class="crumb"><a href="#/">${t('nav_home')}</a> ${I.sep} <span>Log in</span></p>
-    <div style="max-width:460px;margin-top:1.4rem">
-      <div class="formcard">
-        <h1 style="font-size:1.7rem">Log in</h1>
-        <p class="km" style="color:var(--brand);font-weight:600;margin-top:.3rem">ចូលគណនី</p>
-        <p style="color:var(--ink-2);margin-top:.6rem;font-size:.95rem">Enter the number you joined with. We will text you a six-digit code.</p>
-        <form id="loginForm" style="margin-top:1.3rem;display:flex;flex-direction:column;gap:1rem">
-          <div class="field"><label for="lph">Mobile number</label><input id="lph" type="tel" inputmode="tel" placeholder="0XX XXX XXX" required></div>
-          <button class="btn btn-primary" type="submit" style="width:100%">Send me a code</button>
-        </form>
-        <div id="loginOk" hidden style="margin-top:1.2rem;display:flex;flex-direction:column;gap:1rem">
-          <div class="okpanel"><span style="color:var(--ok)">${I.check}</span><div><h3>Code sent</h3><p>Enter the six digits we just texted you.</p></div></div>
-          <div class="field"><label for="otp">Six-digit code</label><input id="otp" inputmode="numeric" maxlength="6" placeholder="––––––" style="letter-spacing:.5em;text-align:center;font-family:var(--font-mono)"></div>
-          <button class="btn btn-primary" id="loginContinue" style="width:100%">Continue</button>
-        </div>
-        <p class="small" style="margin-top:1.1rem">No account yet? <a href="#/register" style="color:var(--brand);font-weight:600">Join free</a></p>
-      </div>
-      <div class="callout"><p><strong>Cannot get the code?</strong> <a href="#/help" style="color:var(--brand);font-weight:600">Ask the helpdesk</a> — they can verify you another way.</p></div>
-    </div>
-  </div>
-</section>`;}
-
-
 export function pageNews(){return `
 <section>
   <div class="wrap">
@@ -422,7 +243,7 @@ export function pageArticle(n){
             <li><span><b>Scan the poster</b><br><span class="small">At your health centre.</span></span></li>
             <li><span><b>Send one text</b><br><span class="small">To the Mami Care short code.</span></span></li>
           </ol>
-          <a class="btn btn-primary" style="width:100%;margin-top:1.2rem" href="#/register">Join free</a>
+          <a class="btn btn-primary" style="width:100%;margin-top:1.2rem" href="#/app/join">Join free</a>
         </div>
       </div>
     </div>
@@ -431,7 +252,6 @@ export function pageArticle(n){
   </div>
 </section>
 ${ctaBand()}`;}
-
 
 
 export function pageFaq(){return `
@@ -590,7 +410,7 @@ export function pageHelp(){
             <li><span><b>Call the free helpline</b><br><span class="small">Open 07:00–19:00, seven days. The toll-free number is sent to you when you join.</span></span></li>
             <li><span><b>Ask at your health centre</b><br><span class="small">Any midwife or volunteer can look up your enrolment.</span></span></li>
           </ol>
-          <a class="btn btn-primary" style="width:100%;margin-top:1.2rem" href="#/register">Join free</a>
+          <a class="btn btn-primary" style="width:100%;margin-top:1.2rem" href="#/app/join">Join free</a>
         </div>
         <div class="callout" style="border-left-color:var(--urgent)"><p><strong>This is not an emergency service.</strong> If you or your baby has heavy bleeding, severe pain, fever, fits or trouble breathing, go to your nearest health centre or hospital now.</p></div>
       </div>
@@ -624,7 +444,7 @@ export function pagePrivacy(){return `
           </ol>
           <p class="small" style="margin-top:1rem">Turning one off never turns the others off.</p>
         </div>
-        <div class="callout"><p><strong>Want to check or change your permissions?</strong> <a href="#/login" style="color:var(--brand);font-weight:600">Log in</a> or ask the helpdesk — they can do it while you are on the call.</p></div>
+        <div class="callout"><p><strong>Want to check or change your permissions?</strong> <a href="#/app/login" style="color:var(--brand);font-weight:600">Log in</a> or ask the helpdesk — they can do it while you are on the call.</p></div>
       </div>
     </div>
   </div>

@@ -11,7 +11,7 @@ export const SERVICES = [
     steps:['Enter your phone number','Tell us your due date or your child’s birthday','Pick SMS, voice call or the app','Confirm the welcome message'],
     aud:['pregnant','postpartum','parent','family'],
     note:'<strong>Being in a health register is not the same as joining.</strong> We only contact you after you have agreed, and each permission can be withdrawn on its own.',
-    cta:{label:'Join free',route:'#/register'}, cta2:{label:'Already joined? Log in',route:'#/login'} },
+    cta:{label:'Join free',route:'#/app/join'}, cta2:{label:'Already joined? Log in',route:'#/app/login'} },
 
   { slug:'guidance', icon:I.guide, name:'Guidance for your week', kh:'ការណែនាំតាមសប្តាហ៍',
     short:'Advice that matches the week you are actually in — from early pregnancy to your child turning two.',
@@ -20,7 +20,7 @@ export const SERVICES = [
     steps:['We start from your due date or your child’s birthday','Real events — the birth, a check-up, a vaccination — move you to the next stage','Messages arrive at the time you chose','It ends gently at your child’s second birthday'],
     aud:['pregnant','postpartum','parent'],
     note:'All content is written and approved by the Ministry of Health. We never give a diagnosis — for anything urgent, go to your health centre.',
-    cta:{label:'See the full journey',route:'#/journey'}, cta2:{label:'Join free',route:'#/register'} },
+    cta:{label:'See the full journey',route:'#/journey'}, cta2:{label:'Join free',route:'#/app/join'} },
 
   { slug:'channels', icon:I.chan, name:'Messages your way', kh:'តាមរបៀបដែលអ្នកចូលចិត្ត',
     short:'SMS, a Khmer voice call, or the app. Any handset works — you do not need the internet.',
@@ -29,25 +29,25 @@ export const SERVICES = [
     steps:['Choose your channel when you join','Change it by replying to any message','Ask for a voice call instead of text','Add a second trusted number if you want'],
     aud:['pregnant','postpartum','parent','family'],
     note:'Nothing arrives between <strong>9pm and 6am</strong>, and never more than four messages in a week.',
-    cta:{label:'Join free',route:'#/register'}, cta2:{label:'How we protect you',route:'#/privacy'} },
+    cta:{label:'Join free',route:'#/app/join'}, cta2:{label:'How we protect you',route:'#/privacy'} },
 
   { slug:'ask', icon:I.ask, name:'Ask a question', kh:'សួរសំណួរ',
     short:'Send a question in Khmer at any hour and get an approved answer back.',
-    lede:'Common questions are answered instantly. Anything we cannot answer goes to a real person the same day.',
-    what:['Available 24 hours, every day','Answers reviewed by Ministry of Health clinicians','Ask by SMS, voice or in the app','Search the health library yourself whenever you like'],
-    steps:['Send your question in Khmer','Get an approved answer back','Ask to speak to a person if you need more','A helpdesk operator follows up'],
+    lede:'This page is a preview — asking a question happens inside the Mami Care app, once you have joined. Common questions are answered instantly there; anything else goes to a real person the same day.',
+    what:['Lives inside the app, under the Ask tab','Available 24 hours, every day, once you have joined','Answers reviewed by Ministry of Health clinicians','Ask by SMS, voice or in the app — whichever you joined with'],
+    steps:['Join free (about two minutes)','Open the Ask tab in your app','Send your question in Khmer','Get an approved answer, or a person follows up the same day'],
     aud:['pregnant','postpartum','parent','family'],
     note:'This is not an emergency line. If you or your baby has a danger sign, go to your nearest health centre straight away.',
-    cta:{label:'Join to ask',route:'#/register'}, cta2:{label:'Talk to a person',route:'#/services/helpdesk'} },
+    cta:{label:'Join free to ask',route:'#/app/join'}, cta2:{label:'Already joined? Log in',route:'#/app/login'} },
 
   { slug:'helpdesk', icon:I.desk, name:'Talk to a person', kh:'ជំនួយពីបុគ្គលិក',
     short:'A Khmer-speaking operator, seven days a week, free from any network.',
-    lede:'Some things need a person. Our helpdesk can fix your enrolment, change what you receive, or hand you to a clinician.',
-    what:['Free to call — the toll-free number is sent to you when you join','Help with joining, stopping, or changing your details','Support after a difficult experience, handled quietly','Escalation to a health professional when it is needed'],
-    steps:['Call or reply with your question','An operator answers in Khmer','They fix it, or pass it to a clinician','You get confirmation when it is closed'],
+    lede:'This page is a preview — calling or requesting a call-back happens inside the app, once you have joined. It is always free; there is never a charge for any of this.',
+    what:['Free to call — the toll-free number appears in your app once you join','Or request a call back at a time that suits you, from the app','Help with joining, stopping, or changing your details','Escalation to a health professional when it is needed'],
+    steps:['Join free (about two minutes)','Open Ask → Talk to a person in your app','Call the free number, or request a call back','An operator answers in Khmer and follows up'],
     aud:['pregnant','postpartum','parent','family'],
     note:'Everything you tell the helpdesk stays confidential and is never shared without your permission.',
-    cta:{label:'Request a call back',route:'#/help'}, cta2:{label:'Common questions',route:'#/faq'} },
+    cta:{label:'Join free to call',route:'#/app/join'}, cta2:{label:'Common questions',route:'#/faq'} },
 
   { slug:'referral', icon:I.ref, name:'Find care near you', kh:'ស្វែងរកសេវាថែទាំ',
     short:'Your nearest health centre, and a warm hand-off when you need to be seen.',
@@ -56,7 +56,7 @@ export const SERVICES = [
     steps:['Tell us your village or health centre','We show you where to go','With your permission, we tell the facility you are coming','They confirm you were seen, and the referral is closed'],
     aud:['pregnant','postpartum','parent'],
     note:'Nothing about you is shared with a facility unless you have given permission for that specific referral.',
-    cta:{label:'Search facilities now',route:'#/facilities'}, cta2:{label:'Join free',route:'#/register'} }
+    cta:{label:'Search facilities now',route:'#/facilities'}, cta2:{label:'Join free',route:'#/app/join'} }
 ];
 
 /* ============ audiences (roles, not names) ============ */
@@ -68,7 +68,7 @@ export const AUDIENCES = [
     steps:['Join with your due date','Get your first message the same day','Guidance follows your weeks automatically','Tell us when your baby arrives'],
     svc:['guidance','channels','ask','referral'],
     note:'Do not know your due date? A midwife can set it at your first visit, or the helpdesk can help you estimate it.',
-    cta:{label:'Join as pregnant',route:'#/register'} },
+    cta:{label:'Join as pregnant',route:'#/app/join'} },
 
   { slug:'postpartum', icon:I.pp, name:'New mother', kh:'ក្រោយសម្រាល',
     short:'The first six weeks after birth — for you as much as for the baby.',
@@ -77,7 +77,7 @@ export const AUDIENCES = [
     steps:['Report the birth by SMS, voice or at the clinic','Messages switch to postnatal care','A check-in on how you are feeling','You move on to baby guidance at six weeks'],
     svc:['guidance','helpdesk','ask','referral'],
     note:'If your pregnancy ended in a loss, tell us or the helpdesk. Messages stop immediately and nothing celebratory will ever reach you.',
-    cta:{label:'Join as a new mother',route:'#/register'} },
+    cta:{label:'Join as a new mother',route:'#/app/join'} },
 
   { slug:'parent', icon:I.child, name:'Parent of a young child', kh:'ឪពុកម្តាយកូនតូច',
     short:'From birth to your child’s second birthday.',
@@ -86,7 +86,7 @@ export const AUDIENCES = [
     steps:['Add your child’s date of birth','Guidance follows their age','Reminders arrive before each vaccination','It ends at their second birthday'],
     svc:['guidance','ask','referral','channels'],
     note:'Fathers, grandmothers and other carers can be added as a second contact, with the mother’s permission.',
-    cta:{label:'Join as a parent',route:'#/register'} },
+    cta:{label:'Join as a parent',route:'#/app/join'} },
 
   { slug:'family', icon:I.fam, name:'Family supporter', kh:'សមាជិកគ្រួសារ',
     short:'Husbands, grandmothers and carers who help look after her.',
@@ -95,7 +95,7 @@ export const AUDIENCES = [
     steps:['She adds your number as a trusted contact','You confirm on your own phone','You receive supporter guidance','She can remove you at any time'],
     svc:['guidance','ask','helpdesk'],
     note:'A supporter never sees her private messages, her helpdesk conversations, or her health details.',
-    cta:{label:'Ask her to add you',route:'#/register'} }
+    cta:{label:'Ask her to add you',route:'#/app/join'} }
 ];
 
 /* ============ journey ============ */
@@ -656,4 +656,42 @@ export const CONFIG_PARAMS = [
   { key:'max_pause', label:'Maximum client-requested pause', value:'8 weeks' },
   { key:'max_supporters', label:'Max active family supporters per client', value:'2' },
   { key:'public_cell_min', label:'Minimum cell size on public outputs', value:'10' }
+];
+
+/* ============ Dashboard analytics: headline numbers, by stage, by province ============
+   These tie together everywhere the CMS talks about "how many users":
+   the Dashboard, Clients & Data, and Reports & Audit all read from the
+   same two arrays, so the story stays consistent page to page. */
+export const STAGE_COUNTS = [
+  { key:'pregnant', label:'Pregnant', kh:'មានផ្ទៃពោះ', count:1840 },
+  { key:'postpartum', label:'Postpartum (0–6 weeks)', kh:'ក្រោយសម្រាល', count:410 },
+  { key:'baby_0_6', label:'Baby 0–6 months', kh:'ទារក ០–៦ ខែ', count:960 },
+  { key:'baby_6_12', label:'Baby 6–12 months', kh:'ទារក ៦–១២ ខែ', count:870 },
+  { key:'child_1_2', label:'Child 1–2 years', kh:'កុមារ ១–២ ឆ្នាំ', count:1310 },
+  { key:'graduated', label:'Graduated', kh:'បញ្ចប់កម្មវិធី', count:2140 }
+];
+export const TOTAL_CLIENTS = STAGE_COUNTS.reduce((a,s)=>a+s.count, 0);
+
+export const ENROLLMENT_BY_PROVINCE = [
+  { province:'Phnom Penh', count:2380 },
+  { province:'Kandal', count:1560 },
+  { province:'Kampong Cham', count:1190 },
+  { province:'Battambang', count:980 },
+  { province:'Siem Reap', count:870 },
+  { province:'Prey Veng', count:640 },
+  { province:'Takeo', count:590 },
+  { province:'Ratanakiri', count:220 }
+];
+
+export const CHANNEL_MIX = [
+  { channel:'SMS', pct:58 },
+  { channel:'Voice / IVR', pct:24 },
+  { channel:'App', pct:18 }
+];
+
+export const ENROLMENT_ROUTES = [
+  { route:'Facility (midwife)', pct:64 },
+  { route:'Self-enrolment (QR/SMS)', pct:22 },
+  { route:'Community (VHSG)', pct:10 },
+  { route:'Postpartum', pct:4 }
 ];
