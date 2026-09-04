@@ -28,18 +28,21 @@ is organised, and served as-is. Three products share one codebase:
   helpline, or request a scheduled call back), and Me (preferences,
   consent centre, my data, change phone).
 - **CMS** (`#/cms/…`) — one internal tool covering every domain the system
-  build spec's Admin Console lists: Dashboard (with real charts — clients
-  by stage, enrolment by province, programme KPIs), Content, Clients &
-  data, Helpdesk queue, Master data (Facilities / Controlled lists —
-  a sidebar sub-menu, not cards on a page), Users & access, Integration,
-  Reports & audit (Coverage & enrolment / Reach & communication /
-  Referrals / Audit log — also sidebar sub-pages), and Configuration.
-  A simulated sign-in (any email/password) gates a role picker (Programme
-  Admin, Clinical Reviewer, Content Editor, M&E Analyst); the sidebar and
-  every page's actions differ by role, switchable anytime from the
-  sidebar's profile card. Reached from the small "Staff" link in the top
-  government strip on marketing pages, or the footer. Publishing content,
-  or a client's question escalating to a helpdesk case, is reflected
+  build spec's Admin Console lists: Dashboard (with real charts — a donut
+  of clients by stage, a bar chart of enrolment by province, headline
+  stats, and the programme KPIs), Content (with a "New content item"
+  create flow), Clients & data, Helpdesk queue, Master data (Facilities /
+  Controlled lists, the latter with add/remove — both sidebar sub-pages,
+  not cards on a page), Users & access (with an "Invite user" create
+  flow), Integration, Reports & audit (Coverage & enrolment / Reach &
+  communication / Referrals / Audit log — also sidebar sub-pages), and
+  Configuration. A simulated sign-in (any email/password) lands straight
+  on the full Programme Admin view — the sidebar's "Switch role" control
+  (Programme Admin, Clinical Reviewer, Content Editor, M&E Analyst) is
+  this demo's way of trying the other views, no second login needed.
+  Reached from the small "Staff" link in the top government strip on
+  marketing pages, or the footer. Publishing content, or a client's
+  question escalating to a helpdesk case, is reflected
   immediately on the app side, in the same browser session — one shared
   in-memory model standing in for what would be separate services.
 

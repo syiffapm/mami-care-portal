@@ -21,11 +21,12 @@ import {
 } from './pages-app.js';
 import { CMS, setCmsRole, setCmsLoggedIn, cmsSignOut } from './cms-state.js';
 import {
-  pageCmsCredentials, pageCmsRolePicker, pageCmsDashboard, pageCmsContent, pageCmsContentDetail,
+  pageCmsCredentials, pageCmsDashboard, pageCmsContent, pageCmsContentNew, pageCmsContentDetail,
   pageCmsClients, pageCmsHelpdesk, pageCmsMasterFacilities, pageCmsMasterLists, pageCmsStaff,
   pageCmsIntegration, pageCmsReportsCoverage, pageCmsReportsReach, pageCmsReportsReferrals, pageCmsReportsAudit,
   pageCmsConfig,
-  cmsSetContentStatus, cmsSetCaseStatus, cmsSetStaffRole, cmsToggleStaffStatus
+  cmsSetContentStatus, cmsSetCaseStatus, cmsSetStaffRole, cmsToggleStaffStatus,
+  cmsCreateContent, cmsInviteStaff, cmsAddListValue, cmsRemoveListValue
 } from './pages-cms.js';
 
 /* ============ router ============ */
@@ -95,9 +96,10 @@ function routeApp(p){
    everything else (simulated — see cms-state.js). */
 function routeCms(p){
   if(!CMS.loggedIn || p[1]==='login') return pageCmsCredentials();
-  if(!CMS.role || p[1]==='role') return pageCmsRolePicker();
+  if(!CMS.role) setCmsRole('admin'); // signing in always lands on the full view
   const sub = p[1];
   if(!sub || sub==='dashboard') return pageCmsDashboard(CMS.role);
+  if(sub==='content' && p[2]==='new') return pageCmsContentNew(CMS.role);
   if(sub==='content' && p[2]) return pageCmsContentDetail(CMS.role, p[2]);
   if(sub==='content') return pageCmsContent(CMS.role);
   if(sub==='clients') return pageCmsClients(CMS.role);
@@ -384,13 +386,7 @@ function wireCms(){
   if(loginForm) loginForm.addEventListener('submit', e=>{
     e.preventDefault();
     setCmsLoggedIn(true);
-    location.hash = '#/cms/role';
-  });
-
-  const roleCards = document.getElementById('cmsRoleCards');
-  if(roleCards) roleCards.addEventListener('click', e=>{
-    const b = e.target.closest('[data-role]'); if(!b) return;
-    setCmsRole(b.dataset.role);
+    setCmsRole('admin'); // straight into the full view; switch role anytime from the sidebar
     location.hash = '#/cms/dashboard';
   });
 
@@ -444,6 +440,51 @@ function wireCms(){
   if(configForm) configForm.addEventListener('submit', e=>{
     e.preventDefault();
     document.getElementById('configOk').hidden = false;
+  });
+
+  /* ---- create: new content item ---- */
+  const contentNewForm = document.getElementById('cmsContentNewForm');
+  if(contentNewForm) contentNewForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    const item = cmsCreateContent({
+      title: document.getElementById('ccnTitle').value.trim(),
+      topic: document.getElementById('ccnTopic').value,
+      minutes: document.getElementById('ccnMinutes').value,
+      summary: document.getElementById('ccnSummary').value.trim(),
+      body: document.getElementById('ccnBody').value
+    });
+    location.hash = '#/cms/content/'+item.slug;
+  });
+
+  /* ---- create: invite a user ---- */
+  const inviteToggle = document.getElementById('cmsInviteToggle');
+  const inviteForm = document.getElementById('cmsInviteForm');
+  if(inviteToggle && inviteForm) inviteToggle.addEventListener('click', ()=>{ inviteForm.hidden = !inviteForm.hidden; });
+  if(inviteForm) inviteForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    cmsInviteStaff({
+      name: document.getElementById('ciName').value.trim(),
+      org: document.getElementById('ciOrg').value.trim(),
+      role: document.getElementById('ciRole').value
+    });
+    route();
+  });
+
+  /* ---- controlled lists: add / remove a value ---- */
+  document.querySelectorAll('.cms-list-add').forEach(f=>{
+    f.addEventListener('submit', e=>{
+      e.preventDefault();
+      const input = f.querySelector('input');
+      cmsAddListValue(+f.dataset.list, input.value.trim());
+      route();
+    });
+  });
+  document.querySelectorAll('[data-list-remove]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const [li, vi] = b.dataset.listRemove.split(':').map(Number);
+      cmsRemoveListValue(li, vi);
+      route();
+    });
   });
 }
 

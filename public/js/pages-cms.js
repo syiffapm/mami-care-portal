@@ -1,14 +1,15 @@
 /* Page renderers for the internal CMS demo under #/cms/*. One tool for
    content, the helpdesk queue, the facility directory, staff access and
    programme analytics/M&E — the same pages exist for everyone, but the
-   sidebar and the actions on a page differ by role. Sign-in and the role
-   picker are both simulated: any email/password gets you in, and picking
-   a role is just this demo's way of trying each view. */
+   sidebar and the actions on a page differ by role. Sign-in is simulated
+   (any email/password gets you in) and lands on the full Programme Admin
+   view; the sidebar's "Switch role" control is this demo's way of trying
+   the other views without a second login. */
 import { I } from './icons.js';
 import { LANG } from './i18n.js';
 import {
   CMS_ROLES, CMS_ACCESS, CMS_CAN_EDIT, CMS_CAN_REVIEW, CONTENT_STATUS_LABEL,
-  KPIS, HELPDESK_CASES, FACILITIES, STAFF, allLibraryItems, libraryTopic,
+  KPIS, HELPDESK_CASES, FACILITIES, STAFF, allLibraryItems, libraryTopic, LIBRARY_TOPICS,
   CLIENT_SAMPLE, CONTROLLED_LISTS, INTEGRATIONS, INTEGRATION_QUEUE, AUDIT_SAMPLE, CONFIG_PARAMS,
   STAGE_COUNTS, TOTAL_CLIENTS, ENROLLMENT_BY_PROVINCE, CHANNEL_MIX, ENROLMENT_ROUTES,
   REFERRALS, REFERRAL_STATUS_STEPS
@@ -90,28 +91,6 @@ export function pageCmsCredentials(){
 </section>`;
 }
 
-/* ============ role picker (there is no real per-role login) ============ */
-export function pageCmsRolePicker(){
-  const cards = CMS_ROLES.map(r=>`
-    <button type="button" class="choice" data-role="${r.key}" style="width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;cursor:pointer;margin-bottom:.7rem">
-      <span class="ci">${I.user}</span>
-      <div><h3${LANG?' class="km"':''}>${LANG?r.kh:r.name}</h3><p>${r.blurb}</p></div>
-    </button>`).join('');
-  return `
-<section>
-  <div class="wrap" style="max-width:640px">
-    <p class="crumb"><a href="#/">${LANG?'ទំព័រដើម':'Home'}</a> ${I.sep} <span>Mami Care CMS</span></p>
-    <div class="formcard" style="margin-top:1.2rem">
-      <h1 style="font-size:1.5rem">${LANG?'អ្នកជាអ្នកណានៅថ្ងៃនេះ?':'Which hat are you wearing today?'}</h1>
-      <p style="color:var(--ink-2);margin-top:.4rem;font-size:.9rem">${LANG
-        ?'ជ្រើសរើសតួនាទីរបស់អ្នក ដើម្បីមើលអ្វីដែលអ្នកនឹងឃើញ។ អ្នកអាចប្តូរបានគ្រប់ពេលពីរបារចំហៀង។'
-        :'Pick a role to see what that person would see. You can switch anytime from the sidebar.'}</p>
-      <div id="cmsRoleCards" style="margin-top:1.3rem">${cards}</div>
-    </div>
-  </div>
-</section>`;
-}
-
 /* ============ dashboard — full picture for admin/analyst,
    a content-focused summary for editor/reviewer ============ */
 export function pageCmsDashboard(role){
@@ -185,16 +164,53 @@ export function pageCmsContent(role){
       <td>${statusBadge(x.status)}</td>
       <td>${x.reviewed}</td>
     </tr>`).join('');
+  const canCreate = CMS_CAN_EDIT.includes(role);
   const inner = `
-    <p class="small" style="margin-bottom:1rem">${LANG
-      ?'ការផ្សព្វផ្សាយត្រូវបានគ្រប់គ្រងនៅទីនេះ — កម្មវិធីសម្រាប់ម្តាយបង្ហាញតែមាតិកាដែលបានផ្សព្វផ្សាយប៉ុណ្ណោះ។'
-      :'Publishing is controlled here — the mother-facing app only ever shows published items.'}</p>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
+      <p class="small" style="max-width:60ch">${LANG
+        ?'ការផ្សព្វផ្សាយត្រូវបានគ្រប់គ្រងនៅទីនេះ — កម្មវិធីសម្រាប់ម្តាយបង្ហាញតែមាតិកាដែលបានផ្សព្វផ្សាយប៉ុណ្ណោះ។'
+        :'Publishing is controlled here — the mother-facing app only ever shows published items.'}</p>
+      ${canCreate ? `<a class="btn btn-primary btn-sm" href="#/cms/content/new">${I.check} ${LANG?'ធាតុថ្មី':'New content item'}</a>` : ''}
+    </div>
     <div class="cms-table-wrap"><table class="cms-table">
       <thead><tr><th>${LANG?'ចំណងជើង':'Title'}</th><th>${LANG?'ប្រធានបទ':'Topic'}</th><th>${LANG?'ស្ថានភាព':'Status'}</th><th>${LANG?'ត្រួតពិនិត្យចុងក្រោយ':'Last reviewed'}</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
   `;
   return cmsShell({role, active:'content', title: LANG?'មាតិកា':'Content', inner});
+}
+
+/* Create — drafts land in the same queue, at CMS_CAN_EDIT roles only. */
+export function pageCmsContentNew(role){
+  if(!CMS_CAN_EDIT.includes(role)) return pageCmsContent(role);
+  const inner = `
+    <p class="crumb" style="margin-bottom:1.1rem"><a href="#/cms/content">${LANG?'មាតិកា':'Content'}</a> ${I.sep} <span>${LANG?'ធាតុថ្មី':'New content item'}</span></p>
+    <form id="cmsContentNewForm" style="max-width:60ch;display:flex;flex-direction:column;gap:1rem">
+      <div class="field"><label for="ccnTitle">${LANG?'ចំណងជើង':'Title'}</label><input id="ccnTitle" type="text" required placeholder="${LANG?'ឧ. ការគេងឱ្យបានល្អសម្រាប់ម្តាយថ្មី':'e.g. Getting enough sleep as a new mother'}"></div>
+      <div class="field"><label for="ccnTopic">${LANG?'ប្រធានបទ':'Topic'}</label>
+        <select id="ccnTopic">${LIBRARY_TOPICS.map(t=>`<option value="${t.slug}">${t.name}</option>`).join('')}</select></div>
+      <div class="field"><label for="ccnMinutes">${LANG?'រយៈពេលអាន/ស្តាប់ (នាទី)':'Read/listen time (minutes)'}</label><input id="ccnMinutes" type="number" min="1" max="10" value="2"></div>
+      <div class="field"><label for="ccnSummary">${LANG?'សេចក្តីសង្ខេប':'Summary'}</label><input id="ccnSummary" type="text" required placeholder="${LANG?'មួយប្រយោគ':'One sentence for the library card'}"></div>
+      <div class="field"><label for="ccnBody">${LANG?'អត្ថបទ':'Body'}</label>
+        <textarea id="ccnBody" rows="5" required placeholder="${LANG?'ប្រយោគនីមួយៗ ជាបន្ទាត់ថ្មី':'One paragraph per line'}" style="font:inherit;font-size:.95rem;padding:.7rem .8rem;border-radius:10px;border:1.5px solid var(--line);resize:vertical"></textarea></div>
+      <div class="cta-row">
+        <button class="btn btn-primary" type="submit">${LANG?'បង្កើតជាព្រាង':'Create draft'}</button>
+        <a class="btn btn-ghost" href="#/cms/content">${LANG?'បោះបង់':'Cancel'}</a>
+      </div>
+    </form>
+  `;
+  return cmsShell({role, active:'content', title: LANG?'ធាតុថ្មី':'New content item', inner});
+}
+export function cmsCreateContent({title, topic, minutes, summary, body}){
+  const slug = (title||'untitled').toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').slice(0,60) || 'untitled-'+Date.now();
+  const item = {
+    slug, topic, status:'draft', minutes: Math.max(1, parseInt(minutes,10)||2),
+    reviewed: new Date().toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}),
+    title, summary, body: (body||'').split('\n').map(s=>s.trim()).filter(Boolean)
+  };
+  allLibraryItems().push(item);
+  return item;
 }
 
 export function pageCmsContentDetail(role, slug){
@@ -275,19 +291,34 @@ export function pageCmsMasterFacilities(role){
 }
 export function pageCmsMasterLists(role){
   if(!canSee(role,'master')) return pageCmsDashboard(role);
+  const canEdit = role==='admin';
   const inner = `
     <p class="small" style="margin-bottom:1rem">${LANG
       ?'ជម្រើសដែលបុគ្គលិកជ្រើសរើសពេលបំពេញទម្រង់ — មិនមែនអត្ថបទសេរីទេ ដើម្បីរក្សាទិន្នន័យស្អាត និងមិនធ្វើរោគវិនិច្ឆ័យ។'
       :'The options staff choose from when filling in a form — never free text, so data stays clean and non-diagnostic.'}</p>
     <div style="display:flex;flex-direction:column;gap:1rem">
-      ${CONTROLLED_LISTS.map(l=>`
+      ${CONTROLLED_LISTS.map((l,li)=>`
         <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1rem 1.15rem">
           <b style="font-size:.9rem">${l.name}</b>
-          <div class="chips" style="margin-top:.6rem">${l.values.map(v=>`<span class="chip" style="cursor:default">${v}</span>`).join('')}</div>
+          <div class="chips" style="margin-top:.6rem">${l.values.map((v,vi)=>`
+            <span class="chip" style="cursor:default">${v}${canEdit?` <button type="button" data-list-remove="${li}:${vi}" aria-label="${LANG?'ដកចេញ':'Remove'} ${v}" style="border:0;background:none;color:var(--muted);cursor:pointer;padding:0 0 0 .3rem;font-weight:700">×</button>`:''}</span>`).join('')}
+          </div>
+          ${canEdit ? `<form class="cms-list-add" data-list="${li}" style="display:flex;gap:.5rem;margin-top:.8rem">
+            <input type="text" placeholder="${LANG?'តម្លៃថ្មី…':'Add a value…'}" style="flex:1;font:inherit;font-size:.85rem;padding:.45rem .7rem;border-radius:8px;border:1.5px solid var(--line)">
+            <button class="btn btn-ghost btn-sm" type="submit">${LANG?'បន្ថែម':'Add'}</button>
+          </form>` : ''}
         </div>`).join('')}
     </div>
   `;
   return cmsShell({role, active:'master-lists', title: LANG?'បញ្ជីត្រួតពិនិត្យ':'Controlled lists', inner});
+}
+export function cmsAddListValue(listIndex, value){
+  const l = CONTROLLED_LISTS[listIndex];
+  if(l && value && !l.values.includes(value)) l.values.push(value);
+}
+export function cmsRemoveListValue(listIndex, valueIndex){
+  const l = CONTROLLED_LISTS[listIndex];
+  if(l) l.values.splice(valueIndex, 1);
 }
 
 /* ============ WS-2 Client & Operational Data (pseudonymised) ============ */
@@ -458,13 +489,26 @@ export function pageCmsStaff(role){
         ${s.status==='active' ? (LANG?'ផ្អាក':'Suspend') : (LANG?'ធ្វើឱ្យសកម្មឡើងវិញ':'Reactivate')}</button></td>
     </tr>`).join('');
   const inner = `
-    <p class="small" style="margin-bottom:1rem">${LANG
-      ?'ការផ្លាស់ប្តូរតួនាទី ឬការផ្អាកគណនីមួយ មិនប៉ះពាល់ដល់អ្នកប្រើប្រាស់ផ្សេងទៀតឡើយ។'
-      :'Changing one person’s role or access never affects anyone else’s.'}</p>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
+      <p class="small" style="max-width:60ch">${LANG
+        ?'ការផ្លាស់ប្តូរតួនាទី ឬការផ្អាកគណនីមួយ មិនប៉ះពាល់ដល់អ្នកប្រើប្រាស់ផ្សេងទៀតឡើយ។'
+        :'Changing one person’s role or access never affects anyone else’s.'}</p>
+      <button class="btn btn-primary btn-sm" id="cmsInviteToggle" type="button">${I.check} ${LANG?'អញ្ជើញអ្នកប្រើប្រាស់':'Invite user'}</button>
+    </div>
+    <form id="cmsInviteForm" hidden style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.2rem;margin-bottom:1.2rem;display:flex;flex-wrap:wrap;gap:.9rem;align-items:end">
+      <div class="field" style="flex:1 1 160px"><label for="ciName">${LANG?'ឈ្មោះ':'Name'}</label><input id="ciName" type="text" required></div>
+      <div class="field" style="flex:1 1 160px"><label for="ciOrg">${LANG?'អង្គភាព':'Organisation'}</label><input id="ciOrg" type="text" required placeholder="MoH / MoWA / …"></div>
+      <div class="field" style="flex:1 1 160px"><label for="ciRole">${LANG?'តួនាទី':'Role'}</label>
+        <select id="ciRole">${CMS_ROLES.map(r=>`<option value="${r.key}">${LANG?r.kh:r.name}</option>`).join('')}</select></div>
+      <button class="btn btn-primary" type="submit" style="flex:0 0 auto">${LANG?'ផ្ញើការអញ្ជើញ':'Send invite'}</button>
+    </form>
     <div class="cms-table-wrap"><table class="cms-table">
       <thead><tr><th>${LANG?'ឈ្មោះ':'Name'}</th><th>${LANG?'អង្គភាព':'Organisation'}</th><th>${LANG?'តួនាទី':'Role'}</th><th>${LANG?'ស្ថានភាព':'Status'}</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
   `;
   return cmsShell({role, active:'users', title: LANG?'អ្នកប្រើប្រាស់ និងសិទ្ធិ':'Users & access', inner});
+}
+export function cmsInviteStaff({name, org, role}){
+  STAFF.push({ name, org, role, status:'active' });
 }

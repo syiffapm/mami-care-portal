@@ -501,7 +501,7 @@ footer{background:var(--surface-2);border-top:1px solid var(--line);padding-bloc
 .cms-nav{display:flex;flex-direction:column;gap:.15rem;flex:1}
 .cms-nav a{display:flex;align-items:center;gap:.7rem;padding:.62rem .75rem;border-radius:10px;
   text-decoration:none;color:var(--ink-2);font-size:.87rem;font-weight:500}
-.cms-nav a svg{opacity:.7;flex:0 0 auto}
+.cms-nav a svg{opacity:.7;flex:0 0 auto;width:18px;height:18px}
 .cms-nav a:hover{background:var(--line-soft)}
 .cms-nav a.on{background:var(--brand);color:#fff}
 .cms-nav a.on svg{opacity:1}
@@ -536,7 +536,7 @@ footer{background:var(--surface-2);border-top:1px solid var(--line);padding-bloc
    sub-pages live in the sidebar, never as cards inside a page */
 .cms-navgroup{display:flex;align-items:center;gap:.7rem;padding:.62rem .75rem;border-radius:10px;
   color:var(--ink-2);font-size:.87rem;font-weight:500}
-.cms-navgroup svg{opacity:.7;flex:0 0 auto}
+.cms-navgroup svg{opacity:.7;flex:0 0 auto;width:18px;height:18px}
 .cms-navgroup.on{color:var(--ink)}
 .cms-subnav{display:flex;flex-direction:column;gap:.05rem;margin:.1rem 0 .3rem 1.85rem;
   border-left:1px solid var(--line);padding-left:.75rem}
