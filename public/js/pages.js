@@ -334,7 +334,7 @@ export function pageAbout(){return `
             <li><span><b>Midwives and community volunteers</b><br><span class="small">They enrol you, and follow you up in person.</span></span></li>
           </ol>
         </div>
-        <div class="callout"><p><strong>Reaching every province.</strong> Mami Care is rolled out together with health centres across the country, starting with pilot operational districts and expanding province by province.</p></div>
+        <div class="callout"><p><strong>Reaching every province, in time.</strong> Mami Care will be rolled out together with health centres across the country — starting with two pilot operational districts, and expanding province by province only once each pilot stage has been shown to work safely.</p></div>
         <div class="callout"><p><strong>Questions about the programme?</strong> <a href="#/help" style="color:var(--brand);font-weight:600">Contact us ${I.arrow}</a></p></div>
       </div>
     </div>

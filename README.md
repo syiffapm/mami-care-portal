@@ -3,10 +3,10 @@
 Static single-page app (no build step, no dependencies, no bundler). It's a
 hash-routed SPA split into ordinary files the way a normal front-end project
 is organised, and served as-is. Aligned to **MamiCare_E2E_Implementation
-Blueprint v1.0** (5 Sep 2026), which supersedes BRD-00 through BRD-09 — see
-[Blueprint alignment](#blueprint-alignment) below for what that means and
-what it deliberately does not mean for a static, no-backend project. Four
-products share one codebase:
+Blueprint v1.1** (5 Sep 2026, same-day revision of v1.0), which supersedes
+BRD-00 through BRD-09 — see [Blueprint alignment](#blueprint-alignment)
+below for what that means and what it deliberately does not mean for a
+static, no-backend project. Four products share one codebase:
 
 - **Marketing site** (`#/…`) — a *preview only*: home, services, who it's
   for, the journey, news, FAQ, about, and a public facility search
@@ -102,6 +102,37 @@ describes without mistaking it for the real thing:
 - **Helpdesk safety gate** (`FORBIDDEN_HEALTH_TERMS` in `data.js`) — a
   small demo lexicon standing in for the real content-moderation service
   described in §6.3.
+- **Programme decisions** (`PROGRAMME_DECISIONS` in `data.js`) — the nine
+  decisions MoH/DPHI still owe (§16), shown read-only in the Orchestration
+  console with the corrected v1.1 distinction: decisions 1–2 block the
+  *build* itself, 7–9 block pilot *launch* only (the engineering proceeds
+  regardless), and 4–6 block integration only and are never a pilot
+  dependency.
+
+### v1.0 → v1.1 corrections applied here
+
+v1.1 corrected three numbers/claims in v1.0 (§0.1); all three are reflected
+in this codebase, not just the source document:
+
+1. **IVR cost share** — was shown as "~30% of cost for ~6% of contacts."
+   Recomputed from the model's own assumptions, it's **~15% for ~4%**
+   (`COST_MODEL` in `data.js`, rendered with a full per-channel breakdown
+   and the underlying assumptions in Reports → Coverage & enrolment).
+2. **The public-facing News section outran the programme's own stated
+   stage** — it previously described a service already live at national
+   scale (provinces opened, 1,200 midwives trained, a helpline already
+   answering, pilot results) with dates *before* the blueprint's own
+   document date, while §11 states the programme is Phase A/pre-Gate-1
+   with the pilot not yet started. This is exactly the failure mode the
+   blueprint names in its own risk register (§17: "public-facing material
+   outruns actual build status"). Every News item was rewritten to
+   describe real Phase A activity (content in clinical review, midwife
+   co-design sessions, pilot-district selection) instead of invented
+   rollout milestones — see `NEWS` in `data.js`.
+3. **§16 decision-blocking language** — added as a new "Programme
+   decisions" table in the Orchestration console (see above), using the
+   corrected build-vs-launch-vs-integration distinction from the start
+   rather than repeating v1.0's conflated wording.
 
 Anti-scope compliance (§19 — "never build"): checked against bulk export,
 campaign/health-attribute cohort targeting, facility performance ranking,

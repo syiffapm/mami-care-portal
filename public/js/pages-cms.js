@@ -14,7 +14,8 @@ import {
   STAGE_COUNTS, TOTAL_CLIENTS, ENROLLMENT_BY_PROVINCE, CHANNEL_MIX, ENROLMENT_ROUTES,
   REFERRALS, REFERRAL_STATUS_STEPS,
   KPI_EVIDENCE, HEADLINE_FIGURES, FUNNEL, COST_MODEL,
-  SUPPRESSION_REGISTRY, SUPPRESSION_EVENTS_TODAY, FORBIDDEN_HEALTH_TERMS
+  SUPPRESSION_REGISTRY, SUPPRESSION_EVENTS_TODAY, FORBIDDEN_HEALTH_TERMS,
+  PROGRAMME_DECISIONS, DECISION_BLOCK_LABEL
 } from './data.js';
 import { cmsShell, hbarChart, donutChart, statusPill, evidenceBadge } from './components.js';
 
@@ -139,7 +140,21 @@ function costModelPanel(){
       <div class="stat-card"><div class="slabel">${LANG?'ចំណែក IVR ក្នុងតម្លៃ':'IVR share of cost'}</div><div class="sval">${COST_MODEL.ivrShareOfCost}</div>
         <div class="ssub">${LANG?`ប៉ុន្តែ ${COST_MODEL.ivrShareOfContacts} នៃការទាក់ទងប៉ុណ្ណោះ`:`for just ${COST_MODEL.ivrShareOfContacts} of contacts`}</div></div>
     </div>
-    <p class="eyebrow" style="display:block;margin:1.1rem 0 .6rem">${LANG?'សេណារីយ៉ូធ្វើមាត្រដ្ឋាន':'Scale scenarios'}</p>
+    <p class="small" style="margin-top:.9rem">${LANG
+      ?'សមាមាត្រនេះទើបជាចំណុចសំខាន់ — IVR មានតម្លៃខ្ពស់ជាង ៣–៤ដង ធៀបនឹងភាគរយនៃការប្រើប្រាស់ពិតរបស់វា។'
+      :'It’s the ratio that matters, not the headline percentages — IVR still costs 3–4× more, proportionally, than how often it’s actually used.'}</p>
+
+    <p class="eyebrow" style="display:block;margin:1.3rem 0 .6rem">${LANG?'ការបំបែកតម្លៃក្នុងមួយអតិថិជន (២៤ខែ)':'Per-subscriber cost breakdown (24mo)'}</p>
+    <div class="cms-table-wrap"><table class="cms-table">
+      <thead><tr><th>${LANG?'ឆានែល':'Channel'}</th><th>${LANG?'ចំណាយប៉ាន់ស្មាន':'Estimated cost'}</th></tr></thead>
+      <tbody>${COST_MODEL.breakdown.map(b=>`<tr><td>${b.channel}</td><td>${b.cost}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <p class="eyebrow" style="display:block;margin:1.3rem 0 .6rem">${LANG?'សម្មតិកម្មនៃការគណនា':'Assumptions behind this'}</p>
+    <div class="cms-table-wrap"><table class="cms-table">
+      <tbody>${COST_MODEL.assumptions.map(a=>`<tr><td class="small">${a.label}</td><td>${a.value}</td></tr>`).join('')}</tbody>
+    </table></div>
+
+    <p class="eyebrow" style="display:block;margin:1.3rem 0 .6rem">${LANG?'សេណារីយ៉ូធ្វើមាត្រដ្ឋាន':'Scale scenarios'}</p>
     <div class="cms-table-wrap"><table class="cms-table">
       <thead><tr><th>${LANG?'ដំណាក់កាល':'Scale'}</th><th>${LANG?'ចំនួនអតិថិជន':'Subscribers'}</th><th>${LANG?'កំណត់ចំណាំ':'Note'}</th></tr></thead>
       <tbody>${COST_MODEL.scenarios.map(s=>`<tr><td>${s.scale}</td><td>${s.subscribers}</td><td class="small">${s.note}</td></tr>`).join('')}</tbody>
@@ -613,6 +628,20 @@ export function pageCmsOrchestration(role){
     <div class="cms-table-wrap"><table class="cms-table">
       <thead><tr><th>${LANG?'លេខកូដ':'Code'}</th><th>${LANG?'លក្ខខណ្ឌ':'Condition'}</th><th>${LANG?'អាចបដិសេធបានទេ?':'Override'}</th></tr></thead>
       <tbody>${SUPPRESSION_REGISTRY.map(s=>`<tr><td><code>${s.code}</code></td><td>${s.condition}</td><td class="small">${s.override}</td></tr>`).join('')}</tbody>
+    </table></div>
+
+    <p class="eyebrow" style="display:block;margin:1.6rem 0 .8rem">${LANG?'ការសម្រេចចិត្តរបស់ក្រសួង (§16)':'Programme decisions (§16)'}</p>
+    <p class="small" style="margin-bottom:.8rem">${LANG
+      ?'ការសម្រេចចិត្តទាំង ៩ ដែលរង់ចាំពី MoH/DPHI ។ ការសម្រេចចិត្តទី ១ និង ២ ទប់ស្កាត់ការសាងសង់ផ្ទាល់ — គ្មានអាជ្ញាធរគ្លីនិកអនុម័តមាតិកា ឬបញ្ជីមណ្ឌលមេ។ ទី ៧ និង ៨ ទប់ស្កាត់តែការចាប់ផ្តើមសាកល្បងផ្ទាល់ — ការសាងសង់អាចបន្តទៅមុខបាន។ ទី ៤–៦ ទប់ស្កាត់តែការធ្វើសមាហរណកម្ម — មិនដែលជាលក្ខខណ្ឌចាំបាច់សម្រាប់ការសាកល្បងឡើយ។'
+      :'The nine decisions still waiting on MoH/DPHI. Decisions 1 and 2 block the build itself — there is no clinical authority to publish content against, or facility master to enrol against, without them. Decisions 7 and 8 block pilot launch only — the engineering work proceeds now regardless. Decisions 4–6 block integration only, and integration is never a pilot dependency.'}</p>
+    <div class="cms-table-wrap"><table class="cms-table">
+      <thead><tr><th>#</th><th>${LANG?'ការសម្រេចចិត្តត្រូវការ':'Decision needed'}</th><th>${LANG?'ដោះសោអ្វី':'Unblocks'}</th><th>${LANG?'ធ្វើអ្វីចន្លោះពេលនេះ':'Do this meanwhile'}</th><th></th></tr></thead>
+      <tbody>${PROGRAMME_DECISIONS.map(d=>{
+        const b = DECISION_BLOCK_LABEL[d.blocks];
+        return `<tr><td>${d.n}</td><td style="max-width:22ch">${d.decision}</td><td class="small" style="max-width:20ch">${d.unblocks}</td>
+          <td class="small" style="max-width:30ch">${d.meanwhile}</td>
+          <td><span class="pill pill-${b.tone}">${LANG?b.km:b.en}</span></td></tr>`;
+      }).join('')}</tbody>
     </table></div>
   `;
   return cmsShell({role, active:'orchestration', title: LANG?'ការគ្រប់គ្រង និងសុវត្ថិភាព':'Orchestration & safety', inner});

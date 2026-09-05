@@ -177,48 +177,60 @@ export const SC = {
 
 
 /* ============ news ============ */
+/* Kept honest to the actual programme stage (Implementation Blueprint
+   v1.1 §11: Phase A, pre-Gate-1 — the pilot has not started, and four of
+   the nine MoH decisions in §16 are still open). Earlier drafts of this
+   section described a service already live at national scale (provinces
+   opened, midwives trained, a helpline already answering calls, pilot
+   results) — dated *before* the blueprint's own document date. That
+   directly contradicted both the blueprint (§0.1) and this site's own
+   footer disclaimer ("Concept portal — not a live public service"), so
+   every item below was rewritten to describe real Phase A build/design
+   activity instead of invented rollout milestones. None of this has
+   reached a real family yet — the rest of this site is a preview of
+   what the finished experience will feel like, not a live service. */
 export const NEWS = [
-  { slug:'five-provinces', date:'28 August 2026', cat:'Rollout', img:'midwife',
-    title:'Mami Care opens in five more provinces',
-    sum:'Health centres in Kampong Cham, Takeo, Prey Veng, Pursat and Kratie can now enrol mothers directly at their antenatal visit.',
-    body:['From this week, midwives at 214 health centres across five more provinces can enrol a mother into Mami Care during her antenatal visit. Enrolment takes under two minutes and works even when the health centre has no mobile signal.',
-      'Mothers already receiving messages do not need to do anything. Anyone who has not joined can ask their midwife at the next visit, scan the poster at the health centre, or send one text to the Mami Care short code.',
-      'The service is free on every network, in Khmer, and can be stopped at any time with a single word.'] },
+  { slug:'first-districts-chosen', date:'28 August 2026', cat:'Programme update', img:'midwife',
+    title:'The first two districts for the Mami Care pilot have been chosen',
+    sum:'Two operational districts will run the first pilot, once enrolment, messages and the helpline have each passed a set of safety checks.',
+    body:['Mami Care is being built and tested before it reaches any family. The programme has chosen two operational districts to run the first pilot, based on how ready each district’s health centres and facility records are to take part.',
+      'Before enrolment opens there, the enrolment tool, the message content and the helpline all have to pass safety checks — including proof that a message can never reach someone who has opted out, and that a support call is always answered by a real Khmer-speaking person.',
+      'This site previews what the finished service will look like and how it will work. Nothing on it has been sent to a real family yet.'] },
 
-  { slug:'khmer-voice', date:'19 August 2026', cat:'Service update', img:'belly',
-    title:'Every message now has a Khmer voice version',
-    sum:'If you would rather listen than read, any guidance can now arrive as a recorded Khmer voice message.',
-    body:['Reading long text on a small screen is difficult for many mothers, and some would simply rather listen. Every piece of guidance in the service now has a recorded Khmer voice version.',
-      'To switch, reply to any message or ask the helpdesk. You can replay a voice message as many times as you like, and you can have both text and voice if that suits you better.',
-      'Voice calls are capped at two a week and never arrive between 9pm and 6am.'] },
+  { slug:'voices-in-review', date:'19 August 2026', cat:'Getting ready', img:'belly',
+    title:'Recording a Khmer voice version of every message, before a single one is sent',
+    sum:'Reading a screen is hard for many mothers, so every piece of guidance is being recorded as audio too — checked before anything can go live.',
+    body:['Many mothers would rather listen than read, especially on a small screen or with low literacy. So every piece of pregnancy and childcare guidance being written for Mami Care is also being recorded as a short Khmer voice message.',
+      'Each recording goes through the same clinical review as its text version before either is approved for use. Nothing is scheduled to reach a phone until both versions have been signed off.',
+      'When the pilot starts, anyone enrolling will be able to choose voice, text, or both — and change their mind at any time.'] },
 
-  { slug:'helpline-seven-days', date:'6 August 2026', cat:'Service update', img:'midwife',
-    title:'The helpline is now open seven days a week',
-    sum:'Khmer-speaking operators are available 07:00 to 19:00 every day, including weekends and public holidays.',
-    body:['The Mami Care helpline now answers seven days a week, from 07:00 to 19:00, including weekends and public holidays.',
-      'Operators can fix an enrolment, change what you receive, add or remove a family supporter, and pass anything clinical to a health professional. Calls are free from every network.',
-      'The helpline is not an emergency service. If you or your baby has a danger sign, go to your nearest health centre straight away.'] },
+  { slug:'helpline-in-design', date:'6 August 2026', cat:'Getting ready', img:'midwife',
+    title:'Designing a helpline that always has a real person behind it',
+    sum:'A Khmer-speaking helpline is being planned and staffed ahead of the pilot — able to fix an enrolment, change a preference, and hand anything clinical to a health professional.',
+    body:['A message alone is never enough — people need somewhere to ask a question or fix something in person. Mami Care’s helpline is being designed and staffed now, ahead of the pilot, not built after people start joining.',
+      'Operators are being trained to handle enrolment changes, preferences and referrals themselves, and to pass anything that sounds clinical straight to a health professional rather than answering it themselves.',
+      'The helpline will never be an emergency service. Anyone with a danger sign will always be told to go straight to their nearest health centre.'] },
 
-  { slug:'midwives-trained', date:'24 July 2026', cat:'Health workers', img:'midwife',
-    title:'1,200 midwives trained to enrol mothers in under two minutes',
-    sum:'Training focuses on taking consent properly and finishing enrolment without slowing down a busy antenatal queue.',
-    body:['Twelve hundred midwives and community health volunteers have now completed Mami Care enrolment training.',
-      'The training covers two things above all: reading the Khmer consent script out loud so a mother knows exactly what she is agreeing to, and finishing the whole enrolment in under ninety seconds so that a full waiting room does not suffer.',
-      'Enrolment works offline. Records sync when the health centre next has signal.'] },
+  { slug:'midwife-codesign', date:'24 July 2026', cat:'Getting ready', img:'midwife',
+    title:'Working with midwives to keep enrolment under 90 seconds',
+    sum:'Midwives from the chosen pilot districts are helping shape an enrolment flow that asks for two details and does not slow down a busy antenatal clinic.',
+    body:['A busy health centre cannot afford an enrolment form that takes five minutes. Midwives from the districts chosen for the pilot are helping test and refine a version that asks for a phone number and one date, and defaults everything else.',
+      'A large part of the work is the consent conversation itself: making sure the Khmer script a midwife reads aloud is clear enough that a mother knows exactly what she is agreeing to, and can decline any part of it without losing the rest.',
+      'This design work uses sample data only, at this stage — not a real mother’s details.'] },
 
-  { slug:'immunisation-reminders', date:'11 July 2026', cat:'Results', img:'baby',
-    title:'Immunisation reminders are helping families keep appointments',
-    sum:'Families who get a reminder before each vaccination visit are noticeably more likely to arrive on schedule.',
-    body:['Early results from pilot operational districts show that families who receive a Mami Care reminder before a scheduled vaccination are markedly more likely to attend on time.',
-      'Reminders follow the national immunisation schedule and are timed from the child’s date of birth. Once a health centre confirms the child was seen, the reminders for that visit stop — nobody is chased about an appointment they already kept.',
-      'Mami Care never records a message as evidence that a visit happened. Only a confirmation from the health centre counts.'] },
+  { slug:'first-guidance-in-review', date:'11 July 2026', cat:'Getting ready', img:'baby',
+    title:'The first batch of pregnancy and after-birth guidance is in clinical review',
+    sum:'Around 60–80 messages covering the middle of pregnancy through the first six weeks after birth are being written, translated and checked by a clinician before anything is approved.',
+    body:['Every message a family will eventually receive starts as a written draft, is translated into Khmer, and is only approved once a clinician has checked it against national guidance — for every channel it will be sent on, separately.',
+      'The first batch — covering the middle of pregnancy through the first six weeks after birth — is being prioritised because it covers the pilot’s first six months. Nothing in it reaches anyone until it is formally approved and versioned.',
+      'A sample of what an approved message could look like is in the Library section of this preview — it is an example, not something a real person has received.'] },
 
-  { slug:'family-supporters', date:'30 June 2026', cat:'Service update', img:'village',
-    title:'Family supporters can now receive their own guidance',
-    sum:'A husband, mother-in-law or carer can be added as a second contact — with her permission, and she can remove them at any time.',
-    body:['Mothers can now add one family supporter to their enrolment. Supporters receive their own separate guidance on how to help during pregnancy and after the birth.',
-      'A supporter never sees her messages, her helpdesk conversations, or her health details. They receive different content, written for them.',
-      'She adds the number, the supporter confirms on their own phone, and she can remove them at any time without affecting anything else in her enrolment.'] }
+  { slug:'family-supporter-design', date:'30 June 2026', cat:'Design', img:'village',
+    title:'How a family supporter will work, once the service is live',
+    sum:'A husband, mother-in-law or carer will be addable as a second contact — with her permission, seeing only what is written for them, and removable at any time.',
+    body:['Many mothers want a partner or family member involved without handing over her own messages or her helpdesk conversations. So the design lets her add one supporter, who receives separate guidance written for them.',
+      'A supporter will never see her messages, her health details, or anything she has told the helpdesk. She will be able to add or remove them at any time, and adding one will always need her confirmation first.',
+      'This is how the feature is designed to work once the service launches — you can try the design in this preview under Join, using sample data.'] }
 ];
 
 
@@ -806,9 +818,32 @@ export const COST_MODEL = {
     { channel:'IP messaging', unit:'per message', rate:'$0.0012' },
     { channel:'Web / QR content', unit:'per session', rate:'~$0.0000' }
   ],
+  /* Blueprint v1.1 §0.1 correction: v1.0 claimed IVR was "~30% of cost
+     for ~6% of contacts" — recomputing from the model's own assumptions
+     (2.5 msgs/week × ~104 weeks, 70/30 SMS·IP split, 2 segments per
+     Khmer SMS, 6 IVR calls/year at 60s) gives ~$3.98 total per
+     subscriber over 24 months (~$3.31 SMS, ~$0.09 IP, ~$0.58 IVR) and
+     an IVR share of ~15% of cost for ~4% of contacts (12 IVR calls out
+     of ~272 total contacts) — not 30%/6%. The policy point survives:
+     IVR is still 3–4× overrepresented in cost relative to how often
+     it's used, just not at the originally claimed magnitude. */
   perSubscriber24mo: '$3.90–$4.60',
-  ivrShareOfCost: '~30%',
-  ivrShareOfContacts: '~6%',
+  ivrShareOfCost: '~15%',
+  ivrShareOfContacts: '~4%',
+  /* The worked example behind the figures above (§10.2): one subscriber,
+     24 months, ~$3.98 total. */
+  assumptions: [
+    { label:'Routine messages per week', value:'2.5 (after caps and suppression)' },
+    { label:'Weeks of engagement', value:'~104' },
+    { label:'Average segments per Khmer SMS', value:'2' },
+    { label:'Share delivered on SMS vs IP', value:'70% / 30%' },
+    { label:'IVR calls per subscriber per year', value:'6, averaging 60 seconds' }
+  ],
+  breakdown: [
+    { channel:'SMS', cost:'~$3.31' },
+    { channel:'IP messaging', cost:'~$0.09' },
+    { channel:'IVR', cost:'~$0.58' }
+  ],
   scenarios: [
     { scale:'Pilot', subscribers:'15,000–40,000', note:'2 ODs, mixed urban/rural' },
     { scale:'Provincial', subscribers:'150,000', note:'' },
@@ -838,3 +873,38 @@ export const FORBIDDEN_HEALTH_TERMS = [
   'paracetamol','ibuprofen','amoxicillin','antibiotic','mg','milligram','dose','dosage','tablet twice',
   'you have','diagnosed with','it is likely','this means you','take this medicine','stop taking'
 ];
+
+/* ============ the nine MoH/DPHI decisions (§16) ============
+   Blueprint v1.1 §0.1 correction #3: v1.0 lumped decisions 1, 2, 7 and 8
+   together as things that "block the pilot build," but the guidance for
+   7 and 8 describes how to keep building without waiting for them — so
+   `blocks` distinguishes what each decision actually gates: 'build'
+   (there is no clinical authority to publish against, or no facility
+   master to enrol against, without it), 'launch' (the engineering can
+   and should proceed now; only going live with real subjects waits),
+   or 'integration' (Level 2 only — never a pilot dependency). */
+export const PROGRAMME_DECISIONS = [
+  { n:1, decision:'Service owner and clinical content authority', unblocks:'Content approval, orchestration rule approval',
+    meanwhile:'Draft content against WHO/MoH published guidance; nominate a candidate owner', blocks:'build' },
+  { n:2, decision:'Official facility master and stable codes', unblocks:'Facility portal, admin, analytics, gateway',
+    meanwhile:'Build the sync mechanism against a sample file', blocks:'build' },
+  { n:3, decision:'ANC enrolment minimum field set', unblocks:'Facility portal',
+    meanwhile:'Build the wizard against the 7-field set now; it is designed to shrink, not grow', blocks:'launch' },
+  { n:4, decision:'Person-level digitisation of ANC/delivery/PNC registers', unblocks:'Integration Level 2',
+    meanwhile:'Build Level 0 fully. Do not wait.', blocks:'integration' },
+  { n:5, decision:'Mother and child identifiers', unblocks:'Integration Level 2, dedup',
+    meanwhile:'Use internal UUID + msisdn_hash; the design already assumes no MoH identifier', blocks:'integration' },
+  { n:6, decision:'Service event access and latency', unblocks:'Event-driven suppression',
+    meanwhile:'Use self-report and facility-report events; sufficient for the pilot', blocks:'integration' },
+  { n:7, decision:'Consent and notice legal basis', unblocks:'Pilot launch readiness',
+    meanwhile:'Build to the strictest reading now — the ledger design does not change with the answer, only going live with real subjects waits', blocks:'launch' },
+  { n:8, decision:'Referral directory and closure ownership', unblocks:'Pilot launch readiness',
+    meanwhile:'Build the directory structure with freshness thresholds now; closure cannot run live until ownership is assigned', blocks:'launch' },
+  { n:9, decision:'2023–2025 + 2026 YTD facility-month extracts', unblocks:'Analytics denominators, sizing',
+    meanwhile:'Submit the request now — the highest-leverage single action available', blocks:'launch' }
+];
+export const DECISION_BLOCK_LABEL = {
+  build: { en:'Blocks the build', km:'ទប់ស្កាត់ការសាងសង់ប្រព័ន្ធ', tone:'urgent' },
+  launch: { en:'Blocks pilot launch only', km:'ទប់ស្កាត់តែការចាប់ផ្តើមសាកល្បង', tone:'warn' },
+  integration: { en:'Blocks integration only — never a pilot dependency', km:'ទប់ស្កាត់តែការធ្វើសមាហរណកម្ម', tone:'ok' }
+};
