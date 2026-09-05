@@ -20,13 +20,18 @@ import {
   pageAppJoin, pageAppLogin, pageAppOnboarding
 } from './pages-app.js';
 import { CMS, setCmsRole, setCmsLoggedIn, cmsSignOut } from './cms-state.js';
+import { FACILITY_SESSION, setFacilitySignedIn } from './facility-state.js';
+import {
+  pageFacilityLogin, pageFacilityToday, pageFacilityEnroll, pageFacilitySync
+} from './pages-facility.js';
 import {
   pageCmsCredentials, pageCmsDashboard, pageCmsContent, pageCmsContentNew, pageCmsContentDetail,
   pageCmsClients, pageCmsHelpdesk, pageCmsMasterFacilities, pageCmsMasterLists, pageCmsStaff,
   pageCmsIntegration, pageCmsReportsCoverage, pageCmsReportsReach, pageCmsReportsReferrals, pageCmsReportsAudit,
-  pageCmsConfig,
+  pageCmsConfig, pageCmsOrchestration,
   cmsSetContentStatus, cmsSetCaseStatus, cmsSetStaffRole, cmsToggleStaffStatus,
-  cmsCreateContent, cmsInviteStaff, cmsAddListValue, cmsRemoveListValue
+  cmsCreateContent, cmsInviteStaff, cmsAddListValue, cmsRemoveListValue,
+  cmsSetSafeMode, cmsIsSafeMode, cmsDryRun, cmsSendHelpdeskReply
 } from './pages-cms.js';
 
 /* ============ router ============ */
@@ -37,6 +42,7 @@ export function route(){
   let html, top='/';
   const isApp = p[0]==='app';
   const isCms = p[0]==='cms';
+  const isFacility = p[0]==='facility';
   if(p.length===0){html=pageHome();top='/';}
   else if(p[0]==='services'&&p[1]){const s=svc(p[1]);html=s?detailPage(s,'service'):pageMissing();top='/services';}
   else if(p[0]==='services'){html=pageServices();top='/services';}
@@ -52,10 +58,12 @@ export function route(){
   else if(p[0]==='facilities'){html=pageFacilities();top='/facilities';}
   else if(isApp){html=routeApp(p);}
   else if(isCms){html=routeCms(p);}
+  else if(isFacility){html=routeFacility(p);}
   else {html=pageMissing();}
   app.innerHTML=html;
   document.body.classList.toggle('app-mode', isApp);
   document.body.classList.toggle('cms-mode', isCms);
+  document.body.classList.toggle('facility-mode', isFacility);
   paintChrome(top);
   closeDrawer();
   if(document.getElementById('jpanel')) renderJourney(2);
@@ -114,8 +122,23 @@ function routeCms(p){
   if(sub==='reports' && p[2]==='referrals') return pageCmsReportsReferrals(CMS.role);
   if(sub==='reports' && p[2]==='audit') return pageCmsReportsAudit(CMS.role);
   if(sub==='reports') return pageCmsReportsCoverage(CMS.role);
+  if(sub==='orchestration') return pageCmsOrchestration(CMS.role);
   if(sub==='config') return pageCmsConfig(CMS.role);
   return pageCmsDashboard(CMS.role);
+}
+
+/* Routes under #/facility/* — the midwife-facing Facility Portal
+   (blueprint §6.2). Deliberately separate from #/app and #/cms: a
+   different device, a different user, a different job. Sign-in gates
+   the worklist behind an explicit tap (simulated — see
+   facility-state.js). */
+function routeFacility(p){
+  if(!FACILITY_SESSION.signedIn || p[1]==='login') return pageFacilityLogin();
+  const sub = p[1];
+  if(!sub || sub==='today') return pageFacilityToday();
+  if(sub==='enroll') return pageFacilityEnroll();
+  if(sub==='sync') return pageFacilitySync();
+  return pageFacilityToday();
 }
 
 function wireForms(){
@@ -161,6 +184,10 @@ function wireForms(){
   wireCallbackForm();
   wireCallingScreen();
   wireFacilitySearch();
+  wireFacilitySignIn();
+  wireFacilityTimer();
+  wireFacilityEnrollForm();
+  wireFacilitySyncNow();
   wirePreferences();
   wireConsentCentre();
   wireDataPage();
@@ -345,6 +372,88 @@ function wireFacilitySearch(){
   });
 }
 
+/* ---------- Facility Portal (#/facility/*) ----------
+   Sign-in just flips a flag (real auth is out of scope for a static
+   demo). The enrolment timer is the whole point of this screen per
+   the blueprint's 90-second target, so it starts the moment the form
+   renders and freezes the elapsed time into the confirmation. */
+function wireFacilitySignIn(){
+  const btn = document.getElementById('facSignIn');
+  if(!btn) return;
+  btn.addEventListener('click', ()=>{
+    setFacilitySignedIn(true);
+    location.hash = '#/facility/today';
+  });
+}
+
+let facTimerInterval = null, facTimerStart = null;
+function wireFacilityTimer(){
+  clearInterval(facTimerInterval);
+  const el = document.getElementById('facTimerVal');
+  if(!el) { facTimerInterval = null; facTimerStart = null; return; }
+  facTimerStart = Date.now();
+  el.textContent = '0s';
+  facTimerInterval = setInterval(()=>{
+    const secs = Math.round((Date.now()-facTimerStart)/1000);
+    el.textContent = secs+'s';
+    el.parentElement.classList.toggle('over', secs>90);
+  }, 1000);
+}
+
+function wireFacilityEnrollForm(){
+  const form = document.getElementById('facEnrollForm');
+  if(!form) return;
+  document.querySelectorAll('.segs[data-group="fac-datekind"] .seg').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const lbl = document.querySelector('label[for="facDate"]');
+      if(lbl) lbl.textContent = b.dataset.v==='dob'
+        ? (LANG?'ថ្ងៃកំណើត':'Birthday')
+        : (LANG?'ថ្ងៃកំណត់សម្រាល':'Due date');
+    });
+  });
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const engaged = document.querySelector('[data-fac-consent="engagement"]');
+    const attest = document.getElementById('facAttest');
+    const err = document.getElementById('facError');
+    if(!(engaged && engaged.checked) || !(attest && attest.checked)){
+      if(err) err.hidden = false;
+      return;
+    }
+    if(err) err.hidden = true;
+    const secs = facTimerStart ? Math.round((Date.now()-facTimerStart)/1000) : 0;
+    clearInterval(facTimerInterval);
+    form.hidden = true;
+    const timerBox = document.getElementById('facTimer');
+    if(timerBox) timerBox.hidden = true;
+    const ok = document.getElementById('facEnrollOk');
+    if(ok){
+      ok.hidden = false;
+      const withinTarget = secs<=90;
+      ok.innerHTML = `<div class="okpanel"><span style="color:${withinTarget?'var(--ok)':'var(--warn)'}">${I.check}</span>
+        <div><h3>${LANG?'ការចុះឈ្មោះបានបញ្ចប់':'Enrolment complete'}</h3>
+        <p>${LANG?`បានចុះឈ្មោះក្នុងរយៈពេល ${secs} វិនាទី`:`Completed in ${secs} seconds`}${withinTarget?(LANG?' — ក្នុងគោលដៅ។':' — within target.'):(LANG?' — លើសគោលដៅបន្តិច នៅតែរក្សាទុក។':' — a little over target, still saved.')}</p>
+        <a class="btn btn-primary" style="margin-top:.8rem" href="#/facility/today">${LANG?'ត្រឡប់ទៅតារាងកិច្ចការ':'Back to worklist'}</a></div></div>`;
+    }
+  });
+}
+
+function wireFacilitySyncNow(){
+  const btn = document.getElementById('facSyncNow');
+  if(!btn) return;
+  btn.addEventListener('click', ()=>{
+    const list = document.getElementById('facQueueList');
+    if(list) list.querySelectorAll('.ccard').forEach(c=>{
+      c.querySelector('.playdot').style.color = 'var(--ok)';
+      c.querySelector('.playdot').innerHTML = I.check;
+      c.querySelector('.small').textContent = LANG?'បានធ្វើសមកាលកម្មរួច':'Synced';
+    });
+    btn.hidden = true;
+    const out = document.getElementById('facSyncOk');
+    if(out) out.hidden = false;
+  });
+}
+
 /* ---------- preferences, consent centre, my data, phone change ---------- */
 function wirePreferences(){
   const pf = document.getElementById('prefForm');
@@ -480,6 +589,61 @@ function wireCms(){
       cmsSetCaseStatus(b.dataset.case, next);
       route();
     });
+  });
+
+  /* ---- helpdesk composer: toggle open, then screen the reply ---- */
+  document.querySelectorAll('[data-reply-toggle]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const row = document.getElementById('replyRow-'+b.dataset.replyToggle);
+      if(row) row.hidden = !row.hidden;
+    });
+  });
+  document.querySelectorAll('.helpdesk-reply-form').forEach(f=>{
+    f.addEventListener('submit', e=>{
+      e.preventDefault();
+      const textarea = f.querySelector('textarea');
+      const val = textarea.value.trim();
+      if(!val) return;
+      const result = cmsSendHelpdeskReply(f.dataset.case, val);
+      const err = f.querySelector('.reply-blocked');
+      if(result.blocked){
+        err.hidden = false;
+        err.textContent = LANG
+          ? `បានរារាំង — ខ្លឹមសារនេះមានលក្ខណៈជាការណែនាំសុខភាព ("${result.term}")។ សូមផ្ញើទៅសម្រាប់ការត្រួតពិនិត្យផ្នែកគ្លីនិកជំនួសវិញ។`
+          : `Blocked — this reads as health instruction language ("${result.term}"). Route it to clinical review instead of sending directly.`;
+        return;
+      }
+      err.hidden = true;
+      route();
+    });
+  });
+
+  /* ---- orchestration: safe mode + dry run ---- */
+  const safeToggle = document.getElementById('safeModeToggle');
+  if(safeToggle) safeToggle.addEventListener('click', ()=>{
+    cmsSetSafeMode(!cmsIsSafeMode());
+    route();
+  });
+  const dryRunBtn = document.getElementById('dryRunBtn');
+  if(dryRunBtn) dryRunBtn.addEventListener('click', ()=>{
+    const sel = document.getElementById('dryRunCode');
+    const result = cmsDryRun(sel ? sel.value : '');
+    const out = document.getElementById('dryRunResult');
+    if(!out) return;
+    out.hidden = false;
+    out.className = 'dryrun-result';
+    if(result.suppressed){
+      out.innerHTML = `<p><strong style="color:var(--urgent)">${LANG?'នឹងត្រូវផ្អាក':'Would be suppressed'}</strong></p>
+        <div class="drgrid">
+          <div><b>${result.code}</b><span class="small">${LANG?'លេខកូដ':'code'}</span></div>
+          <div><b>${result.entry ? result.entry.override : (LANG?'គ្មាន':'None')}</b><span class="small">${LANG?'អាចបដិសេធបានទេ':'override'}</span></div>
+          <div><b>${LANG?'បន្ទាន់ប៉ុណ្ណោះ':'Urgent only'}</b><span class="small">${LANG?'ចេញផុត':'still sends'}</span></div>
+        </div>
+        ${result.entry ? `<p class="small" style="margin-top:.8rem">${result.entry.condition}</p>` : ''}`;
+    } else {
+      out.innerHTML = `<p><strong style="color:var(--ok)">${LANG?'នឹងត្រូវផ្ញើ':'Would send'}</strong></p>
+        <p class="small" style="margin-top:.5rem">${LANG?'គ្មានលក្ខខណ្ឌផ្អាកសារត្រូវនឹងករណីនេះទេ។':'No suppression condition matches this job.'}</p>`;
+    }
   });
 
   document.querySelectorAll('[data-staff-role]').forEach(sel=>{

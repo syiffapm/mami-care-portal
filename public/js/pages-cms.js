@@ -12,9 +12,16 @@ import {
   KPIS, HELPDESK_CASES, FACILITIES, STAFF, allLibraryItems, libraryTopic, LIBRARY_TOPICS,
   CLIENT_SAMPLE, CONTROLLED_LISTS, INTEGRATIONS, INTEGRATION_QUEUE, AUDIT_SAMPLE, CONFIG_PARAMS,
   STAGE_COUNTS, TOTAL_CLIENTS, ENROLLMENT_BY_PROVINCE, CHANNEL_MIX, ENROLMENT_ROUTES,
-  REFERRALS, REFERRAL_STATUS_STEPS
+  REFERRALS, REFERRAL_STATUS_STEPS,
+  KPI_EVIDENCE, HEADLINE_FIGURES, FUNNEL, COST_MODEL,
+  SUPPRESSION_REGISTRY, SUPPRESSION_EVENTS_TODAY, FORBIDDEN_HEALTH_TERMS
 } from './data.js';
-import { cmsShell, hbarChart, donutChart, statusPill } from './components.js';
+import { cmsShell, hbarChart, donutChart, statusPill, evidenceBadge } from './components.js';
+
+/* Orchestration/Safe Mode is a session-only demo flag — a real one would
+   live on the server side of the orchestrator (blueprint §5), not in a
+   page module, but this is enough to show what the control does. */
+const ORCH_STATE = { safeMode: false };
 
 const canSee = (role, section) => (CMS_ACCESS[role]||[]).includes(section);
 const kpi = key => KPIS.find(k=>k.key===key);
@@ -31,9 +38,37 @@ export function cmsSetCaseStatus(id, status){
   const c = HELPDESK_CASES.find(x=>x.id===id);
   if(c) c.status = status;
 }
+/* Composer safety gate (§6.3): the lexicon blocks anything that reads
+   as health instruction — dosage, medication names, diagnosis — with
+   no self-override. A blocked reply is never sent, not even edited
+   and resent by the same person; it has to go back through the
+   clinical-review workflow instead. */
+export function cmsCheckReplyText(text){
+  const t = (text||'').toLowerCase();
+  const hit = FORBIDDEN_HEALTH_TERMS.find(term => t.includes(term.toLowerCase()));
+  return hit ? { blocked:true, term:hit } : { blocked:false };
+}
+export function cmsSendHelpdeskReply(id, text){
+  const check = cmsCheckReplyText(text);
+  if(check.blocked) return check;
+  const c = HELPDESK_CASES.find(x=>x.id===id);
+  if(c){ c.reply = text; c.status = 'answered'; }
+  return check;
+}
 export function cmsSetStaffRole(i, role){ if(STAFF[i]) STAFF[i].role = role; }
 export function cmsToggleStaffStatus(i){
   if(STAFF[i]) STAFF[i].status = STAFF[i].status==='active' ? 'suspended' : 'active';
+}
+export function cmsSetSafeMode(v){ ORCH_STATE.safeMode = v; }
+export function cmsIsSafeMode(){ return ORCH_STATE.safeMode; }
+/* A routine job would be suppressed by Safe Mode itself, or by whichever
+   condition the console is simulating — the dry run just reports which
+   one wins, never actually sends anything. */
+export function cmsDryRun(code){
+  if(ORCH_STATE.safeMode) return { suppressed:true, code:'SAFE_MODE', entry:{ code:'SAFE_MODE', condition:'Safe Mode is on', override:'URGENT_PROTOCOL only' } };
+  if(!code) return { suppressed:false };
+  const entry = SUPPRESSION_REGISTRY.find(s=>s.code===code);
+  return { suppressed:true, code, entry };
 }
 
 function statusBadge(status){
@@ -53,13 +88,63 @@ function caseStatusBadge(s){
 function kpiCards(keys){
   return `<div class="kpi-grid">${keys.map(kk=>{
     const k = kpi(kk); if(!k) return '';
+    const ev = KPI_EVIDENCE[kk];
     return `<div class="kpi-card ${k.tone}">
       <div class="klabel">${k.label}</div>
       <div class="kval">${k.current}</div>
       <div class="ktarget">${LANG?'គោលដៅ':'target'} ${k.target}</div>
       <div class="kpi-bar"><span style="width:${k.pct}%"></span></div>
+      ${ev ? `<div style="margin-top:.5rem">${evidenceBadge(ev.evidence)}</div>
+        <p class="ev-note small">${LANG?'ភាគបែង':'Denominator'}: ${ev.denominator} · ${LANG?'ប្រភព':'source'}: ${ev.source}</p>` : ''}
     </div>`;
   }).join('')}</div>`;
+}
+
+/* Headline figures (blueprint §6.7) — each one is only ever shown with
+   its evidence class, denominator and source attached, never as a bare
+   number, so a projection can never be read back as a verified count. */
+function headlineFiguresRow(){
+  return `<div class="stat-row">${HEADLINE_FIGURES.map(f=>`
+    <div class="stat-card">
+      <div class="slabel">${f.label}</div>
+      <div class="sval">${f.value}</div>
+      <div style="margin:.5rem 0 .3rem">${evidenceBadge(f.evidence)}</div>
+      <div class="ev-source small">${LANG?'ភាគបែង':'Denominator'}: ${f.denominator}</div>
+      <div class="ev-source small">${LANG?'ប្រភព':'Source'}: ${f.source}</div>
+    </div>`).join('')}</div>`;
+}
+
+function funnelSection(){
+  return `<div class="chart-card">
+    <h3>${LANG?'ខ្សែសង្វាក់ដំណើរការ (៩ដំណាក់កាល)':'Funnel — 9 stages, eligible to continuity'}</h3>
+    <p class="small" style="margin-bottom:.8rem">${LANG
+      ?'នីមួយៗគិតជាភាគរយនៃចំនួនសិទ្ធិទទួលបាន — មិនមែនជាការប្រៀបធៀបមណ្ឌលទេ។'
+      :'Each stage is a share of the eligible population — this is a pipeline view, never a facility comparison.'}</p>
+    ${hbarChart(FUNNEL, {labelKey:'stage', valueKey:'value', formatValue:v=>v+'%'})}
+  </div>`;
+}
+
+function costModelPanel(){
+  return `<div class="chart-card">
+    <h3>${LANG?'គំរូការចំណាយ (§10)':'Cost model (§10)'}</h3>
+    <p class="small" style="margin-bottom:.9rem">${LANG
+      ?'តម្លៃប៉ាន់ស្មាន សម្រាប់ផែនការ — មិនមែនជាវិក្កយបត្រពិតប្រាកដទេ។'
+      :'Planning estimates, not actuals — for budget conversations, not billing.'}</p>
+    <div class="cms-table-wrap"><table class="cms-table">
+      <thead><tr><th>${LANG?'ឆានែល':'Channel'}</th><th>${LANG?'ឯកតា':'Unit'}</th><th>${LANG?'អត្រា':'Rate'}</th></tr></thead>
+      <tbody>${COST_MODEL.rates.map(r=>`<tr><td>${r.channel}</td><td class="small">${r.unit}</td><td>${r.rate}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <div class="stat-row" style="margin-top:1rem">
+      <div class="stat-card"><div class="slabel">${LANG?'តម្លៃក្នុងមួយអតិថិជន (២៤ខែ)':'Per-subscriber cost (24mo)'}</div><div class="sval">${COST_MODEL.perSubscriber24mo}</div></div>
+      <div class="stat-card"><div class="slabel">${LANG?'ចំណែក IVR ក្នុងតម្លៃ':'IVR share of cost'}</div><div class="sval">${COST_MODEL.ivrShareOfCost}</div>
+        <div class="ssub">${LANG?`ប៉ុន្តែ ${COST_MODEL.ivrShareOfContacts} នៃការទាក់ទងប៉ុណ្ណោះ`:`for just ${COST_MODEL.ivrShareOfContacts} of contacts`}</div></div>
+    </div>
+    <p class="eyebrow" style="display:block;margin:1.1rem 0 .6rem">${LANG?'សេណារីយ៉ូធ្វើមាត្រដ្ឋាន':'Scale scenarios'}</p>
+    <div class="cms-table-wrap"><table class="cms-table">
+      <thead><tr><th>${LANG?'ដំណាក់កាល':'Scale'}</th><th>${LANG?'ចំនួនអតិថិជន':'Subscribers'}</th><th>${LANG?'កំណត់ចំណាំ':'Note'}</th></tr></thead>
+      <tbody>${COST_MODEL.scenarios.map(s=>`<tr><td>${s.scale}</td><td>${s.subscribers}</td><td class="small">${s.note}</td></tr>`).join('')}</tbody>
+    </table></div>
+  </div>`;
 }
 
 /* ============ sign-in (simulated) ============ */
@@ -125,9 +210,12 @@ export function pageCmsDashboard(role){
   }
 
   const inner = `
-    <div class="stat-row">
+    <p class="eyebrow" style="display:block;margin-bottom:.8rem">${LANG?'តួលេខសំខាន់ៗ':'Headline figures'}</p>
+    ${headlineFiguresRow()}
+
+    <div class="stat-row" style="margin-top:1.2rem">
       <div class="stat-card"><div class="slabel">${LANG?'ចំនួនអតិថិជនសរុប':'Total enrolled clients'}</div>
-        <div class="sval">${TOTAL_CLIENTS.toLocaleString()}</div>
+        <div class="sval">${TOTAL_CLIENTS.toLocaleString('en-US')}</div>
         <div class="ssub">${LANG?`ក្នុងចំណោម ${ENROLLMENT_BY_PROVINCE.length} ខេត្តកំពូល`:`across the ${ENROLLMENT_BY_PROVINCE.length} leading provinces`}</div></div>
       <div class="stat-card"><div class="slabel">${LANG?'បានទាក់ទងជោគជ័យ (៣០ថ្ងៃ)':'Successful contact (30-day)'}</div>
         <div class="sval">${kpi('contact_30d').current}</div>
@@ -137,14 +225,17 @@ export function pageCmsDashboard(role){
         <div class="ssub">${LANG?'នៃ ២៥ ខេត្តទាំងអស់':'of 25 nationally'}</div></div>
     </div>
 
-    <div class="chart-grid-2">
+    <div class="chart-grid-2" style="margin-top:1.2rem">
       <div class="chart-card"><h3>${LANG?'អតិថិជនតាមដំណាក់កាល':'Clients by stage'}</h3>
         ${donutChart(STAGE_COUNTS, {labelKey: LANG?'kh':'label', valueKey:'count'})}</div>
       <div class="chart-card"><h3>${LANG?'ការចុះឈ្មោះតាមខេត្ត (កំពូល ៨)':'Enrolment by province (top 8)'}</h3>
         ${hbarChart(ENROLLMENT_BY_PROVINCE, {labelKey:'province', valueKey:'count'})}</div>
     </div>
 
-    <p class="eyebrow" style="display:block;margin-bottom:.8rem">${LANG?'ការវាស់វែងកម្មវិធី':'Programme KPIs'}</p>
+    <p class="eyebrow" style="display:block;margin:1.4rem 0 .8rem">${LANG?'ខ្សែសង្វាក់ដំណើរការ':'Funnel'}</p>
+    ${funnelSection()}
+
+    <p class="eyebrow" style="display:block;margin:1.4rem 0 .8rem">${LANG?'ការវាស់វែងកម្មវិធី':'Programme KPIs'}</p>
     ${kpiCards(KPIS.map(k=>k.key))}
     <div class="callout" style="margin-top:1.4rem"><p>${LANG
       ?'នេះជាការវាស់វែងកម្មវិធីដូចគ្នាដែលកំណត់ក្នុងឯកសារតម្រូវការអាជីវកម្ម (BRD-01 §2.2)។ ពណ៌លឿងបង្ហាញពីចំណុចដែលនៅក្រោមគោលដៅ។ សម្រាប់ការវិភាគស៊ីជម្រៅ សូមមើល '
@@ -247,7 +338,9 @@ export function pageCmsContentDetail(role, slug){
 /* ============ helpdesk queue ============ */
 export function pageCmsHelpdesk(role){
   if(!canSee(role,'helpdesk')) return pageCmsDashboard(role);
-  const rows = HELPDESK_CASES.map(c=>`
+  const rows = HELPDESK_CASES.map(c=>{
+    const composable = c.status==='open' || c.status==='answered';
+    return `
     <tr data-case="${c.id}">
       <td>${c.id}</td>
       <td style="max-width:26ch">${c.question}</td>
@@ -256,14 +349,33 @@ export function pageCmsHelpdesk(role){
       <td>${priorityBadge(c.priority)}</td>
       <td class="case-status">${caseStatusBadge(c.status)}</td>
       <td class="cms-actions">
+        ${composable ? `<button class="btn btn-ghost" data-reply-toggle="${c.id}" type="button">${LANG?'ឆ្លើយតប':'Reply'}</button>` : ''}
         ${c.status==='open' ? `<button class="btn btn-ghost" data-case-action="answer" data-case="${c.id}">${LANG?'សម្គាល់ថាបានឆ្លើយ':'Mark answered'}</button>` : ''}
         ${c.status==='answered' ? `<button class="btn btn-ghost" data-case-action="close" data-case="${c.id}">${LANG?'បិទករណី':'Close case'}</button>` : ''}
       </td>
-    </tr>`).join('');
+    </tr>
+    ${composable ? `<tr class="helpdesk-reply-row" id="replyRow-${c.id}" hidden>
+      <td colspan="7">
+        ${c.reply ? `<p class="small" style="margin-bottom:.6rem"><b>${LANG?'ចម្លើយដែលបានផ្ញើ':'Sent reply'}:</b> ${c.reply}</p>` : ''}
+        <form class="helpdesk-reply-form" data-case="${c.id}" style="display:flex;flex-direction:column;gap:.6rem;max-width:70ch">
+          <textarea rows="3" placeholder="${LANG?'សរសេរចម្លើយនៅទីនេះ… ជៀសវាងណែនាំថ្នាំ ឬការធ្វើរោគវិនិច្ឆ័យ':'Write a reply… avoid medication, dosage, or diagnosis language'}"
+            style="font:inherit;font-size:.88rem;padding:.6rem .75rem;border-radius:8px;border:1.5px solid var(--line);resize:vertical"></textarea>
+          <div style="display:flex;gap:.6rem;align-items:center">
+            <button class="btn btn-primary btn-sm" type="submit">${LANG?'ពិនិត្យ និងផ្ញើ':'Check &amp; send'}</button>
+            <span class="small" style="color:var(--muted)">${LANG?'រាល់ចម្លើយត្រូវឆ្លងកាត់ការត្រួតពិនិត្យសុវត្ថិភាព':'Every reply is screened before it sends'}</span>
+          </div>
+          <p class="reply-blocked small" hidden style="color:var(--urgent)"></p>
+        </form>
+      </td>
+    </tr>` : ''}`;
+  }).join('');
   const inner = `
     <p class="small" style="margin-bottom:1rem">${LANG
       ?'សំណួរបន្ទាន់ត្រូវបានឆ្លងកាត់ការឆ្លើយឆ្លងស្វ័យប្រវត្តិ ហើយមកដល់ទីនេះភ្លាមៗ។ សំណួរដែលបានសួរនៅក្នុងកម្មវិធីលេចឡើងទីនេះភ្លាមៗ។'
       :'Urgent questions skip the automated answer and land here immediately — as do any questions asked live in the app.'}</p>
+    <div class="callout" style="margin-bottom:1.2rem"><p><strong>${LANG?'ការការពារសុវត្ថិភាព':'Safety gate'}</strong>${LANG?'។ ':'. '}${LANG
+      ?'ចម្លើយណាដែលមានពាក្យស្តីអំពីថ្នាំ ដូសថ្នាំ ឬការធ្វើរោគវិនិច្ឆ័យ នឹងត្រូវរារាំង — គ្មានវិធីបដិសេធដោយខ្លួនឯងទេ។'
+      :'A reply that reads as medication, dosage, or diagnosis language is blocked outright — there is no self-override.'}</p></div>
     <div class="cms-table-wrap"><table class="cms-table">
       <thead><tr><th>${LANG?'ករណី':'Case'}</th><th>${LANG?'សំណួរ':'Question'}</th><th>${LANG?'ពី':'From'}</th><th>${LANG?'ឆានែល':'Channel'}</th><th>${LANG?'អាទិភាព':'Priority'}</th><th>${LANG?'ស្ថានភាព':'Status'}</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
@@ -277,7 +389,7 @@ export function pageCmsMasterFacilities(role){
   if(!canSee(role,'master')) return pageCmsDashboard(role);
   const rows = FACILITIES.map(f=>`
     <tr><td><b>${f.name}</b><br><span class="small">${f.code}</span></td><td>${f.province}</td><td>${f.type}</td>
-      <td>${f.enrolled.toLocaleString()}</td><td>${f.referrals30d}</td><td>${f.phone}</td></tr>`).join('');
+      <td>${f.enrolled.toLocaleString('en-US')}</td><td>${f.referrals30d}</td><td>${f.phone}</td></tr>`).join('');
   const inner = `
     <p class="small" style="margin-bottom:1rem">${LANG
       ?'អានបានតែប៉ុណ្ណោះ — មកពីទីតាំងកណ្តាលរួម។ លេខទាំងនេះមិនចេញផ្សាយជាសាធារណៈទេ (គ្មានការប្រៀបធៀបប្រតិបត្តិការរវាងមណ្ឌល)។'
@@ -338,8 +450,8 @@ export function pageCmsClients(role){
     </tr>`).join('');
   const inner = `
     <p class="small" style="margin-bottom:1rem">${LANG
-      ?`អតិថិជនសរុប ${TOTAL_CLIENTS.toLocaleString()} នាក់ត្រូវបានចុះឈ្មោះ។ ខាងក្រោមនេះជាគំរូតូចមួយប៉ុណ្ណោះ — គ្មានឈ្មោះ ឬលេខទូរស័ព្ទពេញលេញបង្ហាញនៅទីនេះទេ។`
-      :`${TOTAL_CLIENTS.toLocaleString()} clients are enrolled in total. Below is a small sample — no real names appear anywhere, and contact details stay masked by default.`}</p>
+      ?`អតិថិជនសរុប ${TOTAL_CLIENTS.toLocaleString('en-US')} នាក់ត្រូវបានចុះឈ្មោះ។ ខាងក្រោមនេះជាគំរូតូចមួយប៉ុណ្ណោះ — គ្មានឈ្មោះ ឬលេខទូរស័ព្ទពេញលេញបង្ហាញនៅទីនេះទេ។`
+      :`${TOTAL_CLIENTS.toLocaleString('en-US')} clients are enrolled in total. Below is a small sample — no real names appear anywhere, and contact details stay masked by default.`}</p>
     <div class="cms-table-wrap"><table class="cms-table">
       <thead><tr><th>${LANG?'លេខយោង':'Service ref'}</th><th>${LANG?'ដំណាក់កាល':'Stage'}</th><th>${LANG?'មណ្ឌលសុខភាព':'Facility'}</th><th>${LANG?'ការផ្ទៀងផ្ទាត់':'Verification'}</th><th>${LANG?'ការយល់ព្រម':'Consent'}</th><th>${LANG?'ទំនាក់ទំនង':'Contact'}</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -382,7 +494,7 @@ export function pageCmsReportsCoverage(role){
   if(!canSee(role,'reports')) return pageCmsDashboard(role);
   const inner = `
     <div class="stat-row">
-      <div class="stat-card"><div class="slabel">${LANG?'ចុះឈ្មោះសរុប':'Total enrolled'}</div><div class="sval">${TOTAL_CLIENTS.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="slabel">${LANG?'ចុះឈ្មោះសរុប':'Total enrolled'}</div><div class="sval">${TOTAL_CLIENTS.toLocaleString('en-US')}</div></div>
       <div class="stat-card"><div class="slabel">${LANG?'អត្រាបញ្ចប់ការចុះឈ្មោះ':'Enrollment completion'}</div><div class="sval">${kpi('enroll_complete').current}</div><div class="ssub">${LANG?'គោលដៅ':'target'} ${kpi('enroll_complete').target}</div></div>
       <div class="stat-card"><div class="slabel">${LANG?'ការយល់ព្រមនៅ ANC':'Consent at ANC'}</div><div class="sval">${kpi('consent_anc').current}</div><div class="ssub">${LANG?'គោលដៅ':'target'} ${kpi('consent_anc').target}</div></div>
     </div>
@@ -394,6 +506,9 @@ export function pageCmsReportsCoverage(role){
     </div>
     <p class="eyebrow" style="display:block;margin-bottom:.8rem">${LANG?'អតិថិជនតាមដំណាក់កាល':'Clients by stage'}</p>
     ${hbarChart(STAGE_COUNTS, {labelKey:'label', valueKey:'count'})}
+
+    <p class="eyebrow" style="display:block;margin:1.4rem 0 .8rem">${LANG?'ការគិតគូរថវិកា':'Programme economics'}</p>
+    ${costModelPanel()}
   `;
   return cmsShell({role, active:'reports-coverage', title: LANG?'ការគ្របដណ្តប់ និងចុះឈ្មោះ':'Coverage & enrolment', inner});
 }
@@ -449,6 +564,58 @@ export function pageCmsReportsAudit(role){
     </table></div>
   `;
   return cmsShell({role, active:'reports-audit', title: LANG?'កំណត់ហេតុសវនកម្ម':'Audit log', inner});
+}
+
+/* ============ Orchestration & safety (blueprint §5.2, §9) ============
+   Admin-only. The real orchestrator/event-bus/suppression engine is a
+   server-side system this static demo cannot run — this page previews
+   its two visible controls instead: the frozen suppression vocabulary
+   every subscriber-facing job checks before sending, and Safe Mode (a
+   one-switch kill mechanism for anything outbound). */
+export function pageCmsOrchestration(role){
+  if(!canSee(role,'orchestration')) return pageCmsDashboard(role);
+  const totalSuppressed = SUPPRESSION_EVENTS_TODAY.reduce((a,x)=>a+x.count,0);
+  const inner = `
+    <div class="safemode-card ${ORCH_STATE.safeMode?'on':''}" id="safeModeCard">
+      <div>
+        <h3>${LANG?'របៀបសុវត្ថិភាព':'Safe Mode'}</h3>
+        <p class="small">${LANG
+          ?'ពេលបើក សារទាំងអស់ត្រូវបានផ្អាក លើកលែងតែសារបន្ទាន់។ គ្មានការលុប គ្មានការបាត់បង់ទិន្នន័យទេ — គ្រាន់តែផ្អាកការផ្ញើប៉ុណ្ណោះ។'
+          :'When on, every outbound job is held except URGENT_PROTOCOL. Nothing is deleted — sending is just paused until it’s switched off.'}</p>
+      </div>
+      <button type="button" class="safeswitch${ORCH_STATE.safeMode?' on':''}" id="safeModeToggle" role="switch" aria-checked="${ORCH_STATE.safeMode}" aria-label="${LANG?'របៀបសុវត្ថិភាព':'Safe Mode'}"></button>
+    </div>
+
+    <div class="chart-grid-2" style="margin-top:1.4rem">
+      <div class="chart-card">
+        <h3>${LANG?'ការផ្អាកសារថ្ងៃនេះ':'Suppressions today'}</h3>
+        <p class="small" style="margin-bottom:.8rem">${LANG?`សរុប ${totalSuppressed} ព្រឹត្តិការណ៍ — គ្មានការផ្អាកណាមួយស្ងាត់ស្ងៀមទេ`:`${totalSuppressed} events in total — no suppression is ever silent`}</p>
+        ${hbarChart(SUPPRESSION_EVENTS_TODAY, {labelKey:'code', valueKey:'count'})}
+      </div>
+      <div class="chart-card">
+        <h3>${LANG?'សាកល្បងដំណើរការ (Dry run)':'Dry run simulator'}</h3>
+        <p class="small" style="margin-bottom:.8rem">${LANG
+          ?'ជ្រើសរើសលក្ខខណ្ឌ ដើម្បីមើលថាតើសារនឹងត្រូវផ្ញើ ឬត្រូវផ្អាក។'
+          :'Pick a condition to see whether a routine job would send or be suppressed.'}</p>
+        <select id="dryRunCode" style="width:100%;font:inherit;font-size:.85rem;padding:.55rem .7rem;border-radius:8px;border:1.5px solid var(--line);margin-bottom:.8rem">
+          <option value="">${LANG?'— គ្មានលក្ខខណ្ឌ (នឹងផ្ញើ) —':'— no condition (would send) —'}</option>
+          ${SUPPRESSION_REGISTRY.map(s=>`<option value="${s.code}">${s.code}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary" id="dryRunBtn" type="button" style="width:100%">${LANG?'ដំណើរការសាកល្បង':'Run dry run'}</button>
+        <div id="dryRunResult" hidden></div>
+      </div>
+    </div>
+
+    <p class="eyebrow" style="display:block;margin:1.6rem 0 .8rem">${LANG?'បញ្ជីលក្ខខណ្ឌផ្អាកសារ (វាក្យសព្ទថេរ)':'Suppression registry (frozen vocabulary)'}</p>
+    <p class="small" style="margin-bottom:.8rem">${LANG
+      ?'គ្រប់កិច្ចការផ្ញើសារត្រូវពិនិត្យបញ្ជីនេះមុននឹងផ្ញើ។ លេខកូដទាំងនេះមិនអាចផ្លាស់ប្តូរដោយសេរីទេ — ត្រូវការសំណើផ្លាស់ប្តូរជាផ្លូវការ។'
+      :'Every send job checks this list before dispatch. These codes are not free text — changing one needs a formal change request.'}</p>
+    <div class="cms-table-wrap"><table class="cms-table">
+      <thead><tr><th>${LANG?'លេខកូដ':'Code'}</th><th>${LANG?'លក្ខខណ្ឌ':'Condition'}</th><th>${LANG?'អាចបដិសេធបានទេ?':'Override'}</th></tr></thead>
+      <tbody>${SUPPRESSION_REGISTRY.map(s=>`<tr><td><code>${s.code}</code></td><td>${s.condition}</td><td class="small">${s.override}</td></tr>`).join('')}</tbody>
+    </table></div>
+  `;
+  return cmsShell({role, active:'orchestration', title: LANG?'ការគ្រប់គ្រង និងសុវត្ថិភាព':'Orchestration & safety', inner});
 }
 
 /* ============ WS-7 Configuration ============ */

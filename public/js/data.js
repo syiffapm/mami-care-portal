@@ -500,7 +500,7 @@ export const cmsRole = key => CMS_ROLES.find(r=>r.key===key);
 
 /* Which sidebar sections each role can see. One CMS, access differs. */
 export const CMS_ACCESS = {
-  admin:    ['dashboard','content','clients','helpdesk','master','users','integration','reports','config'],
+  admin:    ['dashboard','content','clients','helpdesk','master','users','integration','reports','orchestration','config'],
   reviewer: ['dashboard','content'],
   editor:   ['dashboard','content'],
   analyst:  ['dashboard','reports']
@@ -702,4 +702,139 @@ export const ENROLMENT_ROUTES = [
   { route:'Self-enrolment (QR/SMS)', pct:22 },
   { route:'Community (VHSG)', pct:10 },
   { route:'Postpartum', pct:4 }
+];
+
+/* ============================================================
+   The rest of this file aligns the demo with the End-to-End
+   Implementation Blueprint (5 Sep 2026), which supersedes the
+   earlier BRD/system-build-spec documents as the reference. It adds
+   the Orchestration console's suppression registry (§5.2), evidence
+   classes for every analytics figure (§6.7), and the Facility Portal
+   (§6.2) — a surface that did not exist in this demo before.
+   ============================================================ */
+
+/* ============ orchestrator: suppression registry (§5.2) ============
+   The exact table from the blueprint — codes are frozen vocabulary,
+   never paraphrased, because they are what an operator or an auditor
+   greps for in a real incident. */
+export const SUPPRESSION_REGISTRY = [
+  { code:'OPT_OUT', condition:'Subscriber opted out', override:'None' },
+  { code:'SENSITIVE_SUPPRESSED', condition:'Episode flagged (loss, stillbirth, infant death)', override:'Clinical review only' },
+  { code:'PAUSED', condition:'User or helpdesk pause', override:'Auto-resume at end date' },
+  { code:'CONSENT_MISSING', condition:'No active consent of the required type', override:'None' },
+  { code:'CHANNEL_CONSENT_MISSING', condition:'e.g. IVR job without VOICE_CALL consent', override:'Falls back to a consented channel' },
+  { code:'QUIET_HOURS', condition:'Outside 06:00–21:00 ICT', override:'URGENT_PROTOCOL only' },
+  { code:'FREQUENCY_CAP', condition:'4 routine/week, 2 IVR/week, 2/day, 4h minimum gap', override:'Urgent exempt' },
+  { code:'DUPLICATE_CONTENT', condition:'Same content_id already delivered on any channel in window', override:'None' },
+  { code:'EVENT_RESOLVED', condition:'The service event the reminder targets has been recorded', override:'None' },
+  { code:'STAGE_TRANSITIONED', condition:'Subscriber left the rule’s stage after scheduling', override:'None' },
+  { code:'CONTENT_UNAVAILABLE', condition:'Content held, withdrawn, or audio stale for that channel', override:'None' },
+  { code:'NO_VALID_CONTACT', condition:'Repeated hard failures', override:'Helpdesk correction' },
+  { code:'BUDGET_GUARDRAIL', condition:'Channel budget exhausted', override:'Routine only; important and urgent continue' }
+];
+/* A day's worth of sample suppression events — every suppression is
+   counted and reported, never silent (§5.2). */
+export const SUPPRESSION_EVENTS_TODAY = [
+  { code:'QUIET_HOURS', count:412 },
+  { code:'FREQUENCY_CAP', count:96 },
+  { code:'EVENT_RESOLVED', count:58 },
+  { code:'DUPLICATE_CONTENT', count:21 },
+  { code:'STAGE_TRANSITIONED', count:14 },
+  { code:'OPT_OUT', count:6 },
+  { code:'SENSITIVE_SUPPRESSED', count:1 }
+];
+
+/* ============ analytics: evidence class per figure (§6.7) ============
+   "Every figure carries a denominator, a source, and an evidence
+   class. A figure without all three does not render." */
+export const EVIDENCE_CLASS = {
+  administrative: { en:'Administrative count', km:'ចំនួនរដ្ឋបាល', tone:'solid',
+    note:{en:'Verified MoH/facility activity', km:'សកម្មភាពដែលបានផ្ទៀងផ្ទាត់ពីមណ្ឌលសុខភាព/MoH'} },
+  captured: { en:'Captured indicator', km:'សូចនាករដែលបានចាប់យក', tone:'amber',
+    note:{en:'In HIS — absolute figure not yet supplied (DPHI extract required)', km:'នៅក្នុង HIS — តួលេខពិតប្រាកដមិនទាន់ផ្តល់ (ត្រូវការទិន្នន័យពី DPHI)'} },
+  projection: { en:'Population projection', km:'ការព្យាករណ៍ចំនួនប្រជាជន', tone:'striped',
+    note:{en:'Projection, not service activity', km:'ការព្យាករណ៍ មិនមែនសកម្មភាពសេវាទេ'} },
+  engagement: { en:'Engagement metric', km:'សូចនាករការចូលរួម', tone:'standard',
+    note:{en:'Produced by Mami Care', km:'ផលិតដោយ Mami Care'} }
+};
+/* Every existing programme KPI is an engagement metric — produced by
+   Mami Care itself, over its own denominator. */
+export const KPI_EVIDENCE = {
+  enroll_complete:{evidence:'engagement', denominator:'Started enrolment, this OD', source:'Mami Care core'},
+  consent_anc:{evidence:'engagement', denominator:'Enrolled at ANC, this OD', source:'Mami Care consent ledger'},
+  contact_30d:{evidence:'engagement', denominator:'Active subscribers, 30-day window', source:'Mami Care orchestrator'},
+  sessions:{evidence:'engagement', denominator:'Active users this month', source:'Mami Care client app'},
+  questions:{evidence:'engagement', denominator:'Enrolled subscribers this month', source:'Mami Care helpdesk'},
+  optout:{evidence:'engagement', denominator:'Ever-enrolled, 6-month cohort', source:'Mami Care consent ledger'},
+  pref_change:{evidence:'engagement', denominator:'Enrolled subscribers, 6-month cohort', source:'Mami Care core'},
+  referral_accept:{evidence:'engagement', denominator:'Referrals suggested this OD', source:'Mami Care referral service'},
+  optout_time:{evidence:'engagement', denominator:'Opt-out events, this OD', source:'Mami Care orchestrator'}
+};
+/* Two figures that are deliberately NOT engagement metrics, to show
+   the distinction the evidence-class rule exists to make. */
+export const HEADLINE_FIGURES = [
+  { key:'anc1_projected', label:'Eligible population (2026 ANC1 projection)', value:'354,238',
+    evidence:'projection', denominator:'National, 2026 planning estimate', source:'MoH demographic projection' },
+  { key:'anc1_verified', label:'Verified ANC1 registrations (facility-reported)', value:'—',
+    evidence:'captured', denominator:'Facility master, this OD', source:'DPHI facility-month extract (not yet supplied)' },
+  { key:'enrolled_total', label:'Enrolled in Mami Care', value:String(TOTAL_CLIENTS),
+    evidence:'engagement', denominator:'Cumulative, this OD', source:'Mami Care core' }
+];
+
+/* The funnel is the analytics landing view (§6.7): eligible → reachable
+   → consented → enrolled → delivered → engaged → referred → service
+   completion → continuity. Figures fall off at each stage; that is
+   the point of a funnel, not a defect. */
+export const FUNNEL = [
+  { stage:'Eligible', value:100, note:'ANC1 projection for this OD' },
+  { stage:'Reachable', value:88, note:'Has a working contact channel' },
+  { stage:'Consented', value:74, note:'Active ENGAGEMENT consent' },
+  { stage:'Enrolled', value:71, note:'Provisional + verified' },
+  { stage:'Delivered', value:66, note:'≥1 message successfully delivered' },
+  { stage:'Engaged', value:52, note:'Opened, listened to, or replied' },
+  { stage:'Referred', value:19, note:'A referral was suggested' },
+  { stage:'Service completion', value:12, note:'Referral closed as attended' },
+  { stage:'Continuity', value:9, note:'Still active at next stage transition' }
+];
+
+/* ============ cost model (§10) — placeholders, replace with telco quotes ============ */
+export const COST_MODEL = {
+  rates: [
+    { channel:'SMS, Khmer (UCS-2)', unit:'per 70-char segment', rate:'$0.0091' },
+    { channel:'SMS, English (GSM-7)', unit:'per 160-char segment', rate:'$0.0091' },
+    { channel:'IVR', unit:'per 30 seconds', rate:'$0.0240' },
+    { channel:'IP messaging', unit:'per message', rate:'$0.0012' },
+    { channel:'Web / QR content', unit:'per session', rate:'~$0.0000' }
+  ],
+  perSubscriber24mo: '$3.90–$4.60',
+  ivrShareOfCost: '~30%',
+  ivrShareOfContacts: '~6%',
+  scenarios: [
+    { scale:'Pilot', subscribers:'15,000–40,000', note:'2 ODs, mixed urban/rural' },
+    { scale:'Provincial', subscribers:'150,000', note:'' },
+    { scale:'National', subscribers:'400,000', note:'Roughly the annual ANC1 cohort' }
+  ]
+};
+
+/* ============ Facility Portal (§6.2) — a surface that did not exist
+   in this demo before. Midwife-facing, offline-first, hard 90-second
+   enrolment budget. Kept separate from the CMS: it is a categorically
+   different, operational surface, not an admin console. ============ */
+export const FACILITY_WORKLIST = [
+  { key:'provisional', label:'Provisional, awaiting verification', kh:'បណ្តោះអាសន្ន រង់ចាំផ្ទៀងផ្ទាត់', count:4, tone:'brand' },
+  { key:'edd_passed', label:'EDD passed without a report', kh:'ហួសកាលបរិច្ឆេទ គ្មានរបាយការណ៍', count:2, tone:'warn' },
+  { key:'missed', label:'Missed appointments', kh:'ខកខានការណាត់ជួប', count:3, tone:'warn' },
+  { key:'referrals_open', label:'Referrals open more than 7 days', kh:'ការបញ្ជូនបន្តបើកលើសពី ៧ថ្ងៃ', count:1, tone:'warn' }
+];
+export const FACILITY_NAME = 'Chbar Ampov Health Centre';
+export const FACILITY_CODE = 'PP-CHBA-01';
+
+/* ============ helpdesk composer safety gate (§6.3) ============
+   An operator may send only an approved item, an approved macro, or
+   free text containing no health instruction. This lexicon stands in
+   for the real check: medication names, dosage patterns and
+   diagnostic phrasing are blocked before send, with no self-override. */
+export const FORBIDDEN_HEALTH_TERMS = [
+  'paracetamol','ibuprofen','amoxicillin','antibiotic','mg','milligram','dose','dosage','tablet twice',
+  'you have','diagnosed with','it is likely','this means you','take this medicine','stop taking'
 ];

@@ -4,7 +4,7 @@ import { I } from './icons.js';
 import { LANG, t, KH_SVC, KH_AUD, KH_WK } from './i18n.js';
 import {
   JOURNEY, SC, REFERRAL_STATUS_STEPS, CMS_ROLES, CMS_ACCESS, cmsRole,
-  HELPDESK_CASES, allLibraryItems
+  HELPDESK_CASES, allLibraryItems, EVIDENCE_CLASS, FACILITY_NAME, FACILITY_CODE
 } from './data.js';
 
 export function tile(s){return `<a class="tile" href="#/services/${s.slug}">
@@ -181,6 +181,7 @@ export const CMS_NAV = [
       { key:'reports-referrals', href:'#/cms/reports/referrals', en:'Referrals',              kh:'ការបញ្ជូនបន្ត' },
       { key:'reports-audit',     href:'#/cms/reports/audit',     en:'Audit log',              kh:'កំណត់ហេតុសវនកម្ម' }
   ]},
+  { key:'orchestration', href:'#/cms/orchestration', icon:I.shield, en:'Orchestration & safety', kh:'ការគ្រប់គ្រង និងសុវត្ថិភាព' },
   { key:'config', href:'#/cms/config', icon:I.sliders, en:'Configuration', kh:'ការកំណត់' }
 ];
 /* A group is on-access if the role can see its key (parent gates all children). */
@@ -242,7 +243,7 @@ const CHART_COLORS = ['brand','accent','third','warn','ok','muted'];
 /** A horizontal bar list, e.g. "enrolment by province". */
 export function hbarChart(rows, {labelKey='label', valueKey='value', formatValue}={}){
   const max = Math.max(1, ...rows.map(r=>r[valueKey]));
-  const fmt = formatValue || (v=>v.toLocaleString());
+  const fmt = formatValue || (v=>v.toLocaleString('en-US'));
   return `<div class="hbar-list">${rows.map(r=>`
     <div class="hbar-row">
       <span class="hbar-label">${r[labelKey]}</span>
@@ -273,6 +274,32 @@ export function donutChart(segments, {labelKey='label', valueKey='value', size=1
   return `<div class="donut-row">
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${arcs}</svg>
     <ul class="donut-legend">${legend}</ul>
+  </div>`;
+}
+
+/* Evidence-class badge (§6.7) — every analytics figure gets one. */
+export function evidenceBadge(evidenceKey){
+  const e = EVIDENCE_CLASS[evidenceKey]; if(!e) return '';
+  return `<span class="evbadge ${e.tone}">${LANG?e.km:e.en}</span>`;
+}
+
+/* ============================================================
+   Facility Portal shell (§6.2) — a midwife-facing operational
+   surface. Deliberately not the citizen phone-frame: a shared clinic
+   device tool, not a consumer app.
+   ============================================================ */
+export function facilityShell({title, back, inner}){
+  return `<div class="facscreen">
+    <div class="facbar">
+      <div>
+        ${back ? `<a href="${back}" style="font-size:.8rem">← ${LANG?'ត្រឡប់':'Back'}</a>` : `<span class="fname">${FACILITY_NAME}</span>`}
+      </div>
+      <div style="text-align:right">
+        <div class="fname">${title}</div>
+        <div class="fcode">${FACILITY_CODE}</div>
+      </div>
+    </div>
+    <div class="facbody">${inner}</div>
   </div>`;
 }
 

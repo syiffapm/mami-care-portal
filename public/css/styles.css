@@ -652,3 +652,62 @@ footer{background:var(--surface-2);border-top:1px solid var(--line);padding-bloc
 .call-hangup{width:64px;height:64px;border-radius:99px;background:var(--urgent);color:#fff;border:0;
   display:grid;place-items:center;box-shadow:var(--shadow-lift);margin:3rem auto 0;cursor:pointer}
 .call-hangup svg{width:24px;height:24px;transform:rotate(135deg)}
+
+/* ============================================================
+   Evidence classes (§6.7) — every analytics figure is tagged with
+   how it was produced, rendered distinctly so a projection can never
+   be mistaken for a verified count.
+   ============================================================ */
+.evbadge{display:inline-flex;align-items:center;gap:.35rem;font-size:.66rem;font-weight:700;
+  letter-spacing:.03em;text-transform:uppercase;padding:.2rem .55rem;border-radius:99px;margin-bottom:.5rem}
+.evbadge.solid{background:var(--line-soft);color:var(--ink-2)}
+.evbadge.standard{background:var(--brand-soft);color:var(--brand)}
+.evbadge.amber{background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn)}
+.evbadge.striped{background:repeating-linear-gradient(135deg,var(--line-soft) 0 6px,transparent 6px 12px);
+  color:var(--ink-2);border:1px dashed var(--muted)}
+.ev-note{font-size:.72rem;color:var(--muted);margin-top:.3rem}
+.stat-card .ev-source{font-size:.68rem;color:var(--muted);margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--line-soft)}
+
+/* ---------- orchestration console: safe mode, dry run ---------- */
+.safemode-card{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1.2rem 1.4rem;margin-bottom:1.6rem}
+.safemode-card.on{border-color:var(--urgent);background:color-mix(in srgb,var(--urgent) 5%,var(--surface))}
+.safeswitch{position:relative;width:52px;height:30px;border-radius:99px;background:var(--line);border:0;
+  cursor:pointer;flex:0 0 auto}
+.safeswitch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:99px;
+  background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .18s ease}
+.safeswitch.on{background:var(--urgent)}
+.safeswitch.on::after{transform:translateX(22px)}
+.dryrun-result{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.2rem;margin-top:1rem}
+.dryrun-result .drgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:.8rem}
+.dryrun-result .drgrid div{text-align:center}
+.dryrun-result .drgrid b{display:block;font-family:var(--font-serif);font-size:1.3rem}
+
+/* ============================================================
+   Facility Portal (§6.2) — a midwife-facing operational surface,
+   deliberately not styled like the citizen phone-frame demo above:
+   this is a work tool used on a shared clinic device, not a
+   consumer app. Toggled in with body.facility-mode.
+   ============================================================ */
+.facility-mode .gov,.facility-mode .masthead,.facility-mode footer{display:none}
+.facility-mode{background:var(--surface-2)}
+.facscreen{max-width:480px;margin:0 auto;min-height:100dvh;background:var(--bg);display:flex;flex-direction:column;
+  border-inline:1px solid var(--line)}
+.facbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding:.9rem 1.1rem;background:var(--gov);color:var(--gov-ink)}
+.facbar .fname{font-size:.85rem;font-weight:600}
+.facbar .fcode{font-size:.68rem;opacity:.7;font-family:var(--font-mono)}
+.facbar a{color:var(--gov-ink);text-decoration:none;opacity:.8}
+.facbody{flex:1;padding:1.2rem 1.1rem 2rem}
+.fac-worklist-card{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;
+  padding:.9rem 1.1rem;margin-bottom:.7rem;text-decoration:none;color:inherit}
+.fac-worklist-card.warn{border-left-color:var(--warn)}
+.fac-worklist-card.brand{border-left-color:var(--brand)}
+.fac-worklist-card b{font-size:.68rem;padding:.2rem .55rem;border-radius:99px;background:var(--line-soft);color:var(--ink-2)}
+.fac-worklist-card.warn b{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.fac-worklist-card.brand b{background:var(--brand-soft);color:var(--brand)}
+.fac-timer{text-align:center;padding:1.1rem;background:var(--ink);color:#fff;border-radius:14px;margin-bottom:1.3rem}
+.fac-timer .tval{font-family:var(--font-mono);font-size:2.2rem;font-weight:700;letter-spacing:.02em}
+.fac-timer.over .tval{color:#F7B0B0}
+.fac-timer .tlabel{font-size:.72rem;opacity:.75;text-transform:uppercase;letter-spacing:.08em;margin-top:.2rem}

@@ -2,7 +2,11 @@
 
 Static single-page app (no build step, no dependencies, no bundler). It's a
 hash-routed SPA split into ordinary files the way a normal front-end project
-is organised, and served as-is. Three products share one codebase:
+is organised, and served as-is. Aligned to **MamiCare_E2E_Implementation
+Blueprint v1.0** (5 Sep 2026), which supersedes BRD-00 through BRD-09 — see
+[Blueprint alignment](#blueprint-alignment) below for what that means and
+what it deliberately does not mean for a static, no-backend project. Four
+products share one codebase:
 
 - **Marketing site** (`#/…`) — a *preview only*: home, services, who it's
   for, the journey, news, FAQ, about, and a public facility search
@@ -28,53 +32,115 @@ is organised, and served as-is. Three products share one codebase:
   helpline, or request a scheduled call back), and Me (preferences,
   consent centre, my data, change phone).
 - **CMS** (`#/cms/…`) — one internal tool covering every domain the system
-  build spec's Admin Console lists: Dashboard (with real charts — a donut
-  of clients by stage, a bar chart of enrolment by province, headline
-  stats, and the programme KPIs), Content (with a "New content item"
-  create flow), Clients & data, Helpdesk queue, Master data (Facilities /
-  Controlled lists, the latter with add/remove — both sidebar sub-pages,
-  not cards on a page), Users & access (with an "Invite user" create
-  flow), Integration, Reports & audit (Coverage & enrolment / Reach &
-  communication / Referrals / Audit log — also sidebar sub-pages), and
-  Configuration. A simulated sign-in (any email/password) lands straight
-  on the full Programme Admin view — the sidebar's "Switch role" control
-  (Programme Admin, Clinical Reviewer, Content Editor, M&E Analyst) is
-  this demo's way of trying the other views, no second login needed.
-  Reached from the small "Staff" link in the top government strip on
-  marketing pages, or the footer. Publishing content, or a client's
-  question escalating to a helpdesk case, is reflected
-  immediately on the app side, in the same browser session — one shared
-  in-memory model standing in for what would be separate services.
+  build spec's Admin Console lists: Dashboard (headline figures with
+  evidence-class badges, a funnel, a donut of clients by stage, a bar
+  chart of enrolment by province, and the programme KPIs — each KPI also
+  carrying its evidence class, denominator and source per blueprint
+  §6.7), Content (with a "New content item" create flow), Clients &
+  data, Helpdesk queue (with a per-case reply composer gated by a
+  medication/dosage/diagnosis-language safety filter — a blocked reply
+  has no self-override, per §6.3), Master data (Facilities / Controlled
+  lists, the latter with add/remove — both sidebar sub-pages, not cards
+  on a page), Users & access (with an "Invite user" create flow),
+  Integration, Reports & audit (Coverage & enrolment — including the
+  cost model from §10 — / Reach & communication / Referrals / Audit
+  log — also sidebar sub-pages), Orchestration & safety (the
+  suppression registry's frozen vocabulary from §5.2, a Safe Mode
+  switch, and a dry-run simulator — admin only), and Configuration. A
+  simulated sign-in (any email/password) lands straight on the full
+  Programme Admin view — the sidebar's "Switch role" control (Programme
+  Admin, Clinical Reviewer, Content Editor, M&E Analyst) is this demo's
+  way of trying the other views, no second login needed. Reached from
+  the small "Staff" link in the top government strip on marketing
+  pages, or the footer. Publishing content, or a client's question
+  escalating to a helpdesk case, is reflected immediately on the app
+  side, in the same browser session — one shared in-memory model
+  standing in for what would be separate services.
+- **Facility Portal** (`#/facility/…`) — the midwife-facing surface from
+  §6.2, deliberately styled as a work tool on a shared clinic device
+  rather than a citizen phone-frame: sign-in, a worklist (provisional
+  clients, EDD passed, missed appointments, referrals open), a
+  single-screen fast-enrolment form with a live elapsed-time counter
+  against the blueprint's 90-second target (two typed fields — phone
+  and one date — plus a consent script panel and a required read-aloud
+  attestation), and an offline-sync status screen. Reached from the
+  small "Facility" link next to "Staff" in the government strip, or the
+  footer.
 
 None of this is backed by a real server — enrolment, login, consent, the
 CMS sign-in/role picker and every workflow action are simulated in memory
 so the whole thing works as a clickable prototype with no backend.
 
+## Blueprint alignment
+
+The E2E Implementation Blueprint describes a real system: an orchestrator
+and event bus, a consent ledger, an integration gateway, a suppression
+engine that actually withholds sends, and a facility app that actually
+works offline (§5, §9). **None of that server-side engine exists here, and
+it cannot — this is a static HTML/CSS/JS project with no build step, no
+database, and no server.** What this project does instead is preview the
+*shape* of what those systems produce and enforce, using the same
+vocabulary, so a reviewer can walk through the experience the blueprint
+describes without mistaking it for the real thing:
+
+- **Suppression registry** (`SUPPRESSION_REGISTRY` in `data.js`) — the
+  exact frozen code list from §5.2, shown read-only in the Orchestration
+  console; the Safe Mode switch and dry-run simulator there are in-memory
+  toggles for this session only, not a real send pipeline.
+- **Evidence classes** (`EVIDENCE_CLASS`, `KPI_EVIDENCE`,
+  `HEADLINE_FIGURES` in `data.js`) — every headline figure and KPI on the
+  Dashboard carries a badge (administrative / captured / projection /
+  engagement), a denominator, and a source, per §6.7's rule that a figure
+  without all three does not render.
+- **Funnel and cost model** (`FUNNEL`, `COST_MODEL` in `data.js`) — the
+  9-stage funnel and the §10 cost-per-channel/per-subscriber/scale-scenario
+  figures are the exact placeholder numbers from the blueprint, not a
+  live computation.
+- **Facility Portal** — previews the 90-second enrolment target and the
+  two-field-plus-defaults shape, but the timer, the consent attestation,
+  and "sync" are all simulated; there is no real offline storage.
+- **Helpdesk safety gate** (`FORBIDDEN_HEALTH_TERMS` in `data.js`) — a
+  small demo lexicon standing in for the real content-moderation service
+  described in §6.3.
+
+Anti-scope compliance (§19 — "never build"): checked against bulk export,
+campaign/health-attribute cohort targeting, facility performance ranking,
+and "messages sent" as a headline KPI. None of those appear anywhere in
+this project.
+
 ```
 public/
-  index.html          shell only: head, gov bar (+ small Staff/CMS link),
-                       masthead, footer, <main id="app">
+  index.html          shell only: head, gov bar (+ small Facility/Staff
+                       links), masthead, footer, <main id="app">
   css/
     styles.css        all styles: marketing site, the #/app phone-frame
-                       shell, the #/cms admin layout, and chart primitives
+                       shell, the #/cms admin layout, the #/facility work-
+                       tool shell, chart primitives, and evidence badges
   js/
     icons.js           inline SVG icon library
     i18n.js             English/Khmer copy, language state, t()/khNote()
     data.js             services, audiences, journey, FAQ, news, library
                          content, referrals, dashboard analytics (stage/
-                         province breakdowns), and all CMS reference data
+                         province breakdowns), all CMS reference data, and
+                         the blueprint-alignment data: suppression registry,
+                         evidence classes, headline figures, funnel, cost
+                         model, facility worklist, forbidden-terms lexicon
     components.js       shared render bits: tiles, journey widget, news
                          cards, CTA band, the #/app phone-frame shell +
-                         tabs, the #/cms shell + nested sidebar, and the
-                         hbar/donut chart primitives
+                         tabs, the #/cms shell + nested sidebar, the
+                         #/facility shell, the hbar/donut chart primitives,
+                         and the evidence badge
     pages.js            marketing pages + the public facility search
     pages-app.js        #/app pages: join wizard, login, onboarding, and
                          the client-app-demo screens
-    pages-cms.js        the #/cms pages (9 sections, some with sub-pages)
+    pages-cms.js        the #/cms pages (10 sections, some with sub-pages)
                          + their mutators
+    pages-facility.js    #/facility pages: sign-in, worklist, fast
+                          enrolment (with live timer), offline sync status
     enroll-state.js      shared in-memory state for the join wizard
     ask-state.js          L1→L2 ask-a-question logic (data layer, no UI)
     cms-state.js          CMS sign-in state + which role is selected
+    facility-state.js      Facility Portal sign-in state
     router.js            hash router, page chrome, and all interactive wiring
   assets/
     emblem-mowa.png, emblem-mowa-lg.png, hero-mother-baby.png
