@@ -22,7 +22,8 @@ import {
 import { CMS, setCmsRole, setCmsLoggedIn, cmsSignOut } from './cms-state.js';
 import { FACILITY_SESSION, setFacilitySignedIn } from './facility-state.js';
 import {
-  pageFacilityLogin, pageFacilityToday, pageFacilityEnroll, pageFacilitySync
+  pageFacilityLogin, pageFacilityToday, pageFacilityEnroll, pageFacilitySync, pageFacilityVerify,
+  facilityLookupByCode, facilityConfirmVerification
 } from './pages-facility.js';
 import {
   pageCmsCredentials, pageCmsDashboard, pageCmsContent, pageCmsContentNew, pageCmsContentDetail,
@@ -139,6 +140,7 @@ function routeFacility(p){
   const sub = p[1];
   if(!sub || sub==='today') return pageFacilityToday();
   if(sub==='enroll') return pageFacilityEnroll();
+  if(sub==='verify') return pageFacilityVerify();
   if(sub==='sync') return pageFacilitySync();
   return pageFacilityToday();
 }
@@ -190,6 +192,7 @@ function wireForms(){
   wireFacilitySignIn();
   wireFacilityTimer();
   wireFacilityEnrollForm();
+  wireFacilityVerify();
   wireFacilitySyncNow();
   wirePreferences();
   wireConsentCentre();
@@ -461,6 +464,50 @@ function wireFacilityEnrollForm(){
         <p>${LANG?`បានចុះឈ្មោះក្នុងរយៈពេល ${secs} វិនាទី`:`Completed in ${secs} seconds`}${withinTarget?(LANG?' — ក្នុងគោលដៅ។':' — within target.'):(LANG?' — លើសគោលដៅបន្តិច នៅតែរក្សាទុក។':' — a little over target, still saved.')}</p>
         <a class="btn btn-primary" style="margin-top:.8rem" href="#/facility/today">${LANG?'ត្រឡប់ទៅតារាងកិច្ចការ':'Back to worklist'}</a></div></div>`;
     }
+  });
+}
+
+/* ---------- verify a provisional enrolment (#/facility/verify) ---------- */
+function wireFacilityVerify(){
+  const form = document.getElementById('facVerifyForm');
+  const out = document.getElementById('facVerifyResult');
+  if(!form || !out) return;
+
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const code = document.getElementById('facVerifyCode').value;
+    const profile = facilityLookupByCode(code);
+
+    if(!profile){
+      out.innerHTML = `<div class="okpanel" style="border-color:var(--urgent)">
+        <span style="color:var(--urgent)">${I.stop}</span>
+        <div><h3>${LANG?'រកមិនឃើញ':'No match found'}</h3>
+        <p>${LANG?'គ្មានការចុះឈ្មោះបណ្តោះអាសន្នត្រូវនឹងកូដនេះទេ។ សូមពិនិត្យកូដ ហើយសាកល្បងម្តងទៀត។':'No provisional enrolment matches this code. Check it with her and try again.'}</p></div></div>`;
+      return;
+    }
+    if(profile.status === 'verified'){
+      out.innerHTML = `<div class="okpanel"><span style="color:var(--ok)">${I.check}</span>
+        <div><h3>${LANG?'បានផ្ទៀងផ្ទាត់រួចហើយ':'Already verified'}</h3>
+        <p>${LANG?`អតិថិជននេះត្រូវបានផ្ទៀងផ្ទាត់រួចនៅ ${profile.facility||''}។`:`This client is already verified, at ${profile.facility||'a facility'}.`}</p></div></div>`;
+      return;
+    }
+    /* Only masked data, ever, before the midwife commits — same rule as
+       the CMS's own client list (never a full phone number by default). */
+    out.innerHTML = `<div class="stepbox">
+      <p class="small" style="margin-bottom:.6rem">${LANG?'ត្រូវបានរកឃើញ — សូមបញ្ជាក់ថានេះជាមនុស្សត្រឹមត្រូវ មុននឹងផ្ទៀងផ្ទាត់៖':'Found — confirm this is the right person before verifying:'}</p>
+      <p><b>${LANG?'ទូរស័ព្ទ':'Phone'}:</b> ${profile.phoneMasked}</p>
+      <p><b>${LANG?'ដំណាក់កាល':'Stage'}:</b> ${LANG?profile.stageKh:profile.stageLabel}</p>
+      <p><b>${LANG?'ភាសា':'Language'}:</b> ${profile.language==='km'?(LANG?'ខ្មែរ':'Khmer'):(LANG?'អង់គ្លេស':'English')}</p>
+      <button class="btn btn-primary" id="facConfirmVerify" type="button" style="width:100%;margin-top:1rem">
+        ${I.check} ${LANG?'ផ្ទៀងផ្ទាត់ និងដោះសោការរំលឹករបស់មណ្ឌល':'Confirm & unlock facility reminders'}</button>
+    </div>`;
+    document.getElementById('facConfirmVerify').addEventListener('click', ()=>{
+      facilityConfirmVerification();
+      out.innerHTML = `<div class="okpanel"><span style="color:var(--ok)">${I.check}</span>
+        <div><h3>${LANG?'បានផ្ទៀងផ្ទាត់':'Verified'}</h3>
+        <p>${LANG?'ឥឡូវនេះនាងអាចមើលការណែនាំបន្ត និងការរំលឹកចំពោះមណ្ឌលសុខភាព។':'She can now see facility reminders and referrals in her app.'}</p>
+        <a class="btn btn-primary" style="margin-top:.8rem" href="#/facility/today">${LANG?'ត្រឡប់ទៅតារាងកិច្ចការ':'Back to worklist'}</a></div></div>`;
+    });
   });
 }
 

@@ -252,6 +252,8 @@ export const news = sl => NEWS.find(n=>n.slug===sl);
    the app never shows a "person" unrelated to what you just did. */
 export const DEMO_PROFILE = {
   status:'provisional',                 /* provisional | verified */
+  code:'MC-DEMO',                       /* the reference code shown at Join step 5 — a midwife
+                                            enters this on the Facility Portal to verify you */
   stageLabel:'Pregnant · week 22',
   stageKh:'មានផ្ទៃពោះ · សប្តាហ៍ទី ២២',
   dueLabel:'Baby due around 3 December 2026',

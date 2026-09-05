@@ -97,6 +97,8 @@ function describeDue(){
 export function applyEnrollToProfile(){
   const stage = describeStage();
   DEMO_PROFILE.status = 'provisional';
+  DEMO_PROFILE.code = enrollCode(); // the exact code shown on the confirmation screen — a midwife
+                                     // on the Facility Portal verifies you by entering this
   DEMO_PROFILE.phoneMasked = maskPhone(ENROLL.phone);
   DEMO_PROFILE.language = ENROLL.language;
   DEMO_PROFILE.channel = ENROLL.channel.length ? [...ENROLL.channel] : ['sms'];

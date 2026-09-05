@@ -7,7 +7,7 @@
    is still simulated: there is no offline storage or real sync. */
 import { I } from './icons.js';
 import { LANG } from './i18n.js';
-import { FACILITY_WORKLIST, FACILITY_NAME, CONSENT_TYPES } from './data.js';
+import { FACILITY_WORKLIST, FACILITY_NAME, CONSENT_TYPES, DEMO_PROFILE } from './data.js';
 import { facilityShell } from './components.js';
 
 export function pageFacilityLogin(){
@@ -36,10 +36,14 @@ export function pageFacilityToday(){
     <p class="small" style="margin-bottom:1.1rem">${LANG
       ?'តារាងកិច្ចការថ្ងៃនេះ — មិនមែនទិន្នន័យគ្លីនិកទេ សញ្ញាសម្រាប់ការតាមដានប៉ុណ្ណោះ។'
       :'Today’s worklist — no clinical data, just signals to follow up on.'}</p>
-    ${FACILITY_WORKLIST.map(w=>`
-      <div class="fac-worklist-card ${w.tone}">
+    ${FACILITY_WORKLIST.map(w=>{
+      const clickable = w.key === 'provisional';
+      const tag = clickable ? 'a' : 'div';
+      const href = clickable ? ' href="#/facility/verify"' : '';
+      return `<${tag} class="fac-worklist-card ${w.tone}"${href}>
         <span>${LANG?w.kh:w.label}</span><b>${w.count}</b>
-      </div>`).join('')}
+      </${tag}>`;
+    }).join('')}
     <a class="btn btn-primary" style="width:100%;margin-top:1.4rem" href="#/facility/enroll">
       ${I.check} ${LANG?'ចុះឈ្មោះអតិថិជន':'Enrol a client'}</a>
     <div class="cta-row" style="margin-top:.8rem">
@@ -91,6 +95,40 @@ export function pageFacilityEnroll(){
     <div id="facEnrollOk" hidden></div>
   `;
   return facilityShell({title: LANG?'ចុះឈ្មោះលឿន':'Fast enrolment', back:'#/facility/today', inner});
+}
+
+/* Verify a provisional enrolment (§6.2 "Must exist" — QR / reference
+   code, masked data before verification). A citizen who self-enrols at
+   #/app/join is PROVISIONAL until a real midwife confirms her in
+   person; this is that confirmation. Only masked data is ever shown
+   before the midwife commits — never a full phone number, never a name. */
+export function pageFacilityVerify(){
+  const inner = `
+    <p class="small" style="margin-bottom:1.1rem">${LANG
+      ?'សុំកូដយោង (បង្ហាញនៅលើកម្មវិធីរបស់អតិថិជន ពេលចុះឈ្មោះ) រួចផ្ទៀងផ្ទាត់នៅទីនេះ។'
+      :'Ask for the reference code shown on her app when she enrolled, then confirm it here.'}</p>
+    <form id="facVerifyForm" style="display:flex;gap:.6rem;align-items:end;flex-wrap:wrap">
+      <div class="field" style="flex:1 1 200px"><label for="facVerifyCode">${LANG?'កូដយោង':'Reference code'}</label>
+        <input id="facVerifyCode" type="text" placeholder="MC-XXXX" autocapitalize="characters" autofocus></div>
+      <button class="btn btn-primary" type="submit">${LANG?'ស្វែងរក':'Look up'}</button>
+    </form>
+    <div id="facVerifyResult" style="margin-top:1.3rem"></div>
+  `;
+  return facilityShell({title: LANG?'ផ្ទៀងផ្ទាត់ការចុះឈ្មោះ':'Verify a provisional enrolment', back:'#/facility/today', inner});
+}
+
+/* Pure lookup — this demo has exactly one "current subscriber"
+   (DEMO_PROFILE) standing in for whatever the real facility master
+   would query by code. Returns null on no-match so the caller can show
+   a clear miss rather than silently doing nothing. */
+export function facilityLookupByCode(code){
+  const c = (code||'').trim().toUpperCase();
+  if(!c || c !== (DEMO_PROFILE.code||'').toUpperCase()) return null;
+  return DEMO_PROFILE;
+}
+export function facilityConfirmVerification(){
+  DEMO_PROFILE.status = 'verified';
+  DEMO_PROFILE.facility = FACILITY_NAME;
 }
 
 export function pageFacilitySync(){

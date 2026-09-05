@@ -96,7 +96,14 @@ describes without mistaking it for the real thing:
   9-stage funnel and the §10 cost-per-channel/per-subscriber/scale-scenario
   figures are the exact placeholder numbers from the blueprint, not a
   live computation.
-- **Facility Portal** — previews the 90-second enrolment target and the
+- **Facility Portal** — includes verifying a provisional enrolment
+  (`#/facility/verify`, §6.2's "verify provisional" requirement): a
+  midwife enters the reference code a citizen was shown at the end of
+  Join, sees only masked data before committing, and confirming flips
+  `DEMO_PROFILE.status` to `verified` — which the citizen side reads
+  immediately, in the same session, so the "not verified yet" banner on
+  Today actually clears rather than just describing a step that doesn't
+  exist anywhere. Also previews the 90-second enrolment target and the
   two-field-plus-defaults shape, but the timer, the consent attestation,
   and "sync" are all simulated; there is no real offline storage.
 - **Helpdesk safety gate** (`FORBIDDEN_HEALTH_TERMS` in `data.js`) — a
