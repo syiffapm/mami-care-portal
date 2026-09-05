@@ -8,9 +8,9 @@ import { LANG, t, khNote } from './i18n.js';
 import {
   DEMO_PROFILE, LIBRARY_TOPICS, LIBRARY_ITEMS, libraryTopic, libraryItem, itemsInTopic,
   SUGGESTED_QUESTIONS, URGENT_SIGNS, REFERRALS, referral, CONSENT_TYPES,
-  HELPLINE_NUMBER, HELPLINE_HOURS, SC, PROVINCES, publicFacilities
+  HELPLINE_NUMBER, HELPLINE_HOURS, SC, PROVINCES, publicFacilities, JOURNEY
 } from './data.js';
-import { appShell, contentRow, statusPill, referralStepper, stepProgress } from './components.js';
+import { appShell, contentRow, statusPill, referralStepper, stepProgress, notifPreview } from './components.js';
 import { MY_CASES, getCase } from './ask-state.js';
 import { ENROLL, enrollCode, applyEnrollToProfile } from './enroll-state.js';
 import { facilityCard } from './pages.js';
@@ -55,9 +55,47 @@ export function pageAppToday(){
       <div><h3>${LANG?'មានសំណួរទេ?':'Have a question?'}</h3><p>${LANG?'សួរបានគ្រប់ពេល ជាភាសាខ្មែរ។':'Ask anything, any time, in Khmer.'}</p></div>
     </div>
     <a class="btn btn-primary" style="width:100%;margin-top:.6rem" href="#/app/ask">${LANG?'សួរសំណួរ':'Ask a question'}</a>
+    <a class="chip" href="#/app/messages" style="margin-top:1rem;display:inline-flex">${I.sms} ${LANG?'មើលគំរូការជូនដំណឹង':'See how a reminder looks on your phone'}</a>
     <p class="small" style="text-align:center;margin-top:1.6rem">${LANG?'ធ្វើបច្ចុប្បន្នភាពចុងក្រោយ · ឥឡូវនេះ':'Last updated · just now'}</p>
   `;
   return appShell({active:'today', title: LANG?'ថ្ងៃនេះ':'Today', back:'#/', inner});
+}
+
+/* ============ notification preview (§6.4 safe-contact preview, applied
+   client-side) — a lock-screen simulation, not real message history.
+   Shows exactly what a reminder looks like as it arrives, and how that
+   changes the moment the handset is marked shared. */
+export function pageAppMessages(){
+  const p = DEMO_PROFILE;
+  const sample = JOURNEY[1]; // a representative mid-pregnancy reminder
+  const inner = `
+    <p class="small" style="margin-bottom:1rem">${LANG
+      ?'នេះជាគំរូតែប៉ុណ្ណោះ — មិនមែនប្រវត្តិសារពិតទេ។ សូមសាកល្បងចុចប៊ូតុងខាងក្រោម។'
+      :'This is a demonstration, not real message history. Tap the button below to try it.'}</p>
+
+    <div class="notif-demo-frame">
+      <div class="notif-demo-clock">9:41</div>
+      <div class="notif-demo-slot" id="notifSlot"></div>
+    </div>
+
+    <button class="btn btn-primary" id="simulateMsgBtn" type="button" style="width:100%;margin-top:1.1rem">
+      ${I.sms} ${LANG?'សាកល្បងទទួលសារ':'Simulate an incoming message'}</button>
+
+    <label class="cons" style="margin-top:1.1rem">
+      <input type="checkbox" id="notifSafeToggle" ${p.safeContact?'checked':''}>
+      <span><b>${LANG?'ទូរស័ព្ទនេះជារបស់រួម (Safe contact)':'This handset is shared (Safe contact)'}</b>
+        <span>${LANG?'ពេលបើក ការជូនដំណឹងលាក់ខ្លឹមសារទាំងអស់ និងឈ្មោះអ្នកផ្ញើ។':'When on, the notification hides the message content and the sender name entirely.'}</span></span>
+    </label>
+
+    <div id="openedMessage" hidden style="margin-top:1.5rem">
+      <p class="eyebrow" style="display:block;margin-bottom:.6rem">${LANG?'សារដែលបានបើក':'Opened message'}</p>
+      <div class="bubble"><span class="km">${sample.msg}</span><span class="en">${sample.en}</span></div>
+      <p class="small" style="margin-top:.7rem">${LANG
+        ?'ឆ្លើយតប STOP ឬ ឈប់ ដើម្បីឈប់ទទួលសារនៅពេលណាក៏បាន — មិនចាំបាច់ជាមួយហេតុផលទេ។'
+        :'Reply STOP at any time to stop receiving messages — no reason needed.'}</p>
+    </div>
+  `;
+  return appShell({active:'today', title: LANG?'គំរូការជូនដំណឹង':'Notification preview', back:'#/app/today', inner});
 }
 
 /* ============ Library ============ */

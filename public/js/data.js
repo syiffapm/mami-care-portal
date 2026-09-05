@@ -851,6 +851,34 @@ export const COST_MODEL = {
   ]
 };
 
+/* ============ SMS/IVR channel-variant authoring helpers (§6.4) ============
+   "Live Khmer segment counter — 70 chars per UCS-2 segment, with cost
+   per 100,000 sends shown at authoring time" and "IVR duration
+   estimate — live, as the script is typed." Used by the CMS content
+   composer (live, on every keystroke) and rendered once, statically,
+   wherever a saved variant is displayed. */
+export const SMS_SEGMENT_CHARS = 70; // UCS-2 (Khmer) — §6.4, §10.1
+export const IVR_CHARS_PER_SECOND = 12; // rough Khmer read-aloud pace — placeholder, replace with a real TTS timing check before use
+export const IVR_ROUTINE_CAP_SECONDS = 90; // §5.3 — routine IVR calls are hard-capped here
+
+export function smsSegments(text){
+  const len = (text||'').trim().length;
+  return len ? Math.ceil(len / SMS_SEGMENT_CHARS) : 0;
+}
+export function smsCostPer100k(text){
+  const entry = COST_MODEL.rates.find(r=>r.channel==='SMS, Khmer (UCS-2)');
+  const rate = entry ? parseFloat(entry.rate.replace('$','')) : 0.0091;
+  return smsSegments(text) * rate * 100000;
+}
+export function ivrDurationSeconds(text){
+  const len = (text||'').trim().length;
+  return len ? Math.ceil(len / IVR_CHARS_PER_SECOND) : 0;
+}
+export function formatDuration(totalSeconds){
+  const s = Math.max(0, totalSeconds|0);
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+}
+
 /* ============ Facility Portal (§6.2) — a surface that did not exist
    in this demo before. Midwife-facing, offline-first, hard 90-second
    enrolment budget. Kept separate from the CMS: it is a categorically

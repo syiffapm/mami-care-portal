@@ -108,6 +108,22 @@ describes without mistaking it for the real thing:
   *build* itself, 7–9 block pilot *launch* only (the engineering proceeds
   regardless), and 4–6 block integration only and are never a pilot
   dependency.
+- **SMS/IVR channel-variant authoring** (§6.4) — the CMS content
+  composer (`#/cms/content/new` and any item's detail page) has a live
+  Khmer segment counter (70 chars/UCS-2 segment) with a cost-per-100,000-
+  sends estimate, a live IVR duration estimate flagged if it exceeds the
+  90-second routine cap, and a side-by-side notification preview showing
+  the normal view next to the safe-contact view (neutral sender, no
+  content) — exactly the three "must exist" items in §6.4 that had no UI
+  at all before. See `smsMeter`/`ivrMeter`/`variantPreviewRow` in
+  `pages-cms.js` and `notifPreview` in `components.js`.
+- **"How a reminder arrives" preview** (`#/app/messages`) — a citizen-
+  facing screen that simulates a message landing as a lock-screen
+  notification, then "opening" into the full bubble. The safe-contact
+  toggle here is wired to the same `DEMO_PROFILE.safeContact` flag as
+  Preferences, so flipping it live-updates the notification to show a
+  neutral sender and no content — the actual behaviour §7.1 requires for
+  a shared handset, not just a description of it.
 
 ### v1.0 → v1.1 corrections applied here
 

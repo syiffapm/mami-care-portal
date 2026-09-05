@@ -4,8 +4,8 @@
    consent centre, referrals. */
 import { I } from './icons.js';
 import { LANG, t, toggleLang, setLang } from './i18n.js';
-import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE } from './data.js';
-import { renderJourney } from './components.js';
+import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE, JOURNEY } from './data.js';
+import { renderJourney, notifPreview } from './components.js';
 import { ENROLL, enrollCode, gestationalWeeks } from './enroll-state.js';
 import { startAskCase, markHelpful, markNotHelpful, deliverOperatorReply, continueCase } from './ask-state.js';
 import {
@@ -17,7 +17,7 @@ import {
   pageAppToday, pageAppLibrary, pageAppTopic, pageAppContent, pageAppAsk, pageAppAskThread,
   pageAppUrgent, pageAppReferrals, pageAppReferralDetail, pageAppMe, pageAppCallback, pageAppCalling,
   pageAppPreferences, pageAppConsent, pageAppData, pageAppPhone, pageAppMissing, pageAppFacilities,
-  pageAppJoin, pageAppLogin, pageAppOnboarding
+  pageAppJoin, pageAppLogin, pageAppOnboarding, pageAppMessages
 } from './pages-app.js';
 import { CMS, setCmsRole, setCmsLoggedIn, cmsSignOut } from './cms-state.js';
 import { FACILITY_SESSION, setFacilitySignedIn } from './facility-state.js';
@@ -31,7 +31,8 @@ import {
   pageCmsConfig, pageCmsOrchestration,
   cmsSetContentStatus, cmsSetCaseStatus, cmsSetStaffRole, cmsToggleStaffStatus,
   cmsCreateContent, cmsInviteStaff, cmsAddListValue, cmsRemoveListValue,
-  cmsSetSafeMode, cmsIsSafeMode, cmsDryRun, cmsSendHelpdeskReply
+  cmsSetSafeMode, cmsIsSafeMode, cmsDryRun, cmsSendHelpdeskReply,
+  cmsSetContentVariants, smsMeter, ivrMeter, variantPreviewRow
 } from './pages-cms.js';
 
 /* ============ router ============ */
@@ -88,6 +89,7 @@ function routeApp(p){
   if(sub==='callback') return pageAppCallback();
   if(sub==='calling') return pageAppCalling();
   if(sub==='facilities') return pageAppFacilities();
+  if(sub==='messages') return pageAppMessages();
   if(sub==='urgent') return pageAppUrgent();
   if(sub==='referrals' && p[2]) return pageAppReferralDetail(p[2]);
   if(sub==='referrals') return pageAppReferrals();
@@ -183,6 +185,7 @@ function wireForms(){
   wireAskThread();
   wireCallbackForm();
   wireCallingScreen();
+  wireMessagePreview();
   wireFacilitySearch();
   wireFacilitySignIn();
   wireFacilityTimer();
@@ -345,6 +348,29 @@ function wireCallingScreen(){
   endBtn.addEventListener('click', ()=>{
     clearCallTimers();
     location.hash = '#/app/callback';
+  });
+}
+
+/* ---------- notification preview (#/app/messages) ----------
+   Simulates a reminder arriving as a lock-screen notification, and how
+   the safe-contact setting changes what shows on it. Tapping the
+   notification "opens" it into the full message bubble underneath. */
+function wireMessagePreview(){
+  const btn = document.getElementById('simulateMsgBtn');
+  const slot = document.getElementById('notifSlot');
+  const safeToggle = document.getElementById('notifSafeToggle');
+  if(!btn || !slot) return;
+  const sample = JOURNEY[1];
+  const paint = ()=>{
+    slot.innerHTML = notifPreview({ body: LANG?sample.msg:sample.en, safe: safeToggle.checked });
+  };
+  btn.addEventListener('click', ()=>{
+    paint();
+    document.getElementById('openedMessage').hidden = false;
+  });
+  safeToggle.addEventListener('change', ()=>{
+    DEMO_PROFILE.safeContact = safeToggle.checked; // same flag as Preferences, kept in sync
+    if(slot.querySelector('.notif-card')) paint();
   });
 }
 
@@ -674,6 +700,7 @@ function wireCms(){
   });
 
   /* ---- create: new content item ---- */
+  wireContentComposer();
   const contentNewForm = document.getElementById('cmsContentNewForm');
   if(contentNewForm) contentNewForm.addEventListener('submit', e=>{
     e.preventDefault();
@@ -682,9 +709,23 @@ function wireCms(){
       topic: document.getElementById('ccnTopic').value,
       minutes: document.getElementById('ccnMinutes').value,
       summary: document.getElementById('ccnSummary').value.trim(),
-      body: document.getElementById('ccnBody').value
+      body: document.getElementById('ccnBody').value,
+      smsKm: document.getElementById('ccnSms').value,
+      ivrScript: document.getElementById('ccnIvr').value
     });
     location.hash = '#/cms/content/'+item.slug;
+  });
+
+  /* ---- add/revise a channel variant on an existing item ---- */
+  const variantForm = document.getElementById('cmsVariantForm');
+  if(variantForm) variantForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    cmsSetContentVariants(variantForm.dataset.slug, {
+      smsKm: document.getElementById('ccnSms').value,
+      ivrScript: document.getElementById('ccnIvr').value
+    });
+    const ok = document.getElementById('variantSaveOk');
+    if(ok) ok.hidden = false;
   });
 
   /* ---- create: invite a user ---- */
@@ -722,6 +763,29 @@ function wireCms(){
 function cmsRoleName(){
   const r = CMS.role;
   return r ? r.charAt(0).toUpperCase()+r.slice(1) : 'you';
+}
+
+/* ---- CMS content composer: live SMS segment/cost counter, safe-contact
+   preview, and IVR duration estimate (§6.4) — same wiring serves both
+   "New content item" and an existing item's "Channel variants" editor,
+   since they share element ids and only one is ever in the DOM. ---- */
+function wireContentComposer(){
+  const smsInput = document.getElementById('ccnSms');
+  const ivrInput = document.getElementById('ccnIvr');
+  if(!smsInput && !ivrInput) return;
+
+  const paintSms = ()=>{
+    const meter = document.getElementById('smsMeter');
+    const preview = document.getElementById('smsPreviewRow');
+    if(meter){ const m = smsMeter(smsInput.value); meter.innerHTML = m.html; meter.classList.toggle('over', m.over); }
+    if(preview) preview.innerHTML = variantPreviewRow(smsInput.value);
+  };
+  const paintIvr = ()=>{
+    const meter = document.getElementById('ivrMeter');
+    if(meter){ const m = ivrMeter(ivrInput.value); meter.innerHTML = m.html; meter.classList.toggle('over', m.over); }
+  };
+  if(smsInput) smsInput.addEventListener('input', paintSms);
+  if(ivrInput) ivrInput.addEventListener('input', paintIvr);
 }
 
 document.addEventListener('click',e=>{

@@ -15,9 +15,36 @@ import {
   REFERRALS, REFERRAL_STATUS_STEPS,
   KPI_EVIDENCE, HEADLINE_FIGURES, FUNNEL, COST_MODEL,
   SUPPRESSION_REGISTRY, SUPPRESSION_EVENTS_TODAY, FORBIDDEN_HEALTH_TERMS,
-  PROGRAMME_DECISIONS, DECISION_BLOCK_LABEL
+  PROGRAMME_DECISIONS, DECISION_BLOCK_LABEL,
+  SMS_SEGMENT_CHARS, IVR_ROUTINE_CAP_SECONDS,
+  smsSegments, smsCostPer100k, ivrDurationSeconds, formatDuration
 } from './data.js';
-import { cmsShell, hbarChart, donutChart, statusPill, evidenceBadge } from './components.js';
+import { cmsShell, hbarChart, donutChart, statusPill, evidenceBadge, notifPreview } from './components.js';
+
+/* Rendered once at page-load for whatever text a variant already has
+   (empty string for a brand-new item); router.js re-renders these same
+   inner fragments live, on every keystroke, via the exported ids below. */
+export function smsMeter(text){
+  const segs = smsSegments(text);
+  const over = segs > 4; // a routine content item running to 5+ segments is a length-discipline smell, not a hard rule
+  const html = `<span>${(text||'').trim().length} / ${SMS_SEGMENT_CHARS} ${LANG?'តួអក្សរ':'characters'} · ${segs} ${LANG?'ចម្រៀក':segs===1?'segment':'segments'}</span>
+    <span>$${smsCostPer100k(text).toFixed(2)} ${LANG?'ក្នុងការផ្ញើ ១០០.០០០ដង':'per 100,000 sends'}</span>`;
+  return { html, over };
+}
+export function ivrMeter(text){
+  const secs = ivrDurationSeconds(text);
+  const over = secs > IVR_ROUTINE_CAP_SECONDS;
+  const html = `${LANG?'រយៈពេលប៉ាន់ស្មាន':'Estimated duration'}: ${formatDuration(secs)}${over
+    ? ` — ${LANG?`លើសកម្រិតកំណត់ ${IVR_ROUTINE_CAP_SECONDS} វិនាទីសម្រាប់ការហៅធម្មតា`:`exceeds the ${IVR_ROUTINE_CAP_SECONDS}-second routine call cap`}`
+    : ''}`;
+  return { html, over };
+}
+export function variantPreviewRow(text){
+  return `<div class="variant-preview-row">
+    <div><div class="vp-label">${LANG?'ការមើលធម្មតា':'Normal preview'}</div>${notifPreview({body:text, safe:false})}</div>
+    <div><div class="vp-label">${LANG?'ការមើលនៅពេលទូរស័ព្ទរួម (Safe contact)':'Safe-contact preview (shared handset)'}</div>${notifPreview({body:text, safe:true})}</div>
+  </div>`;
+}
 
 /* Orchestration/Safe Mode is a session-only demo flag — a real one would
    live on the server side of the orchestrator (blueprint §5), not in a
@@ -297,8 +324,32 @@ export function pageCmsContentNew(role){
         <select id="ccnTopic">${LIBRARY_TOPICS.map(t=>`<option value="${t.slug}">${t.name}</option>`).join('')}</select></div>
       <div class="field"><label for="ccnMinutes">${LANG?'រយៈពេលអាន/ស្តាប់ (នាទី)':'Read/listen time (minutes)'}</label><input id="ccnMinutes" type="number" min="1" max="10" value="2"></div>
       <div class="field"><label for="ccnSummary">${LANG?'សេចក្តីសង្ខេប':'Summary'}</label><input id="ccnSummary" type="text" required placeholder="${LANG?'មួយប្រយោគ':'One sentence for the library card'}"></div>
-      <div class="field"><label for="ccnBody">${LANG?'អត្ថបទ':'Body'}</label>
+      <div class="field"><label for="ccnBody">${LANG?'អត្ថបទ (សម្រាប់វិបសាយ/បណ្ណាល័យ)':'Body (web / library)'}</label>
         <textarea id="ccnBody" rows="5" required placeholder="${LANG?'ប្រយោគនីមួយៗ ជាបន្ទាត់ថ្មី':'One paragraph per line'}" style="font:inherit;font-size:.95rem;padding:.7rem .8rem;border-radius:10px;border:1.5px solid var(--line);resize:vertical"></textarea></div>
+
+      <hr style="border:none;border-top:1px solid var(--line);margin:.2rem 0">
+      <p class="eyebrow" style="display:block">${LANG?'ព្រែកតាមឆានែល (§6.4 — អនុម័តដាច់ដោយឡែកក្នុងភាសា និងឆានែលនីមួយៗ)':'Channel variants (§6.4 — approved separately per language and channel)'}</p>
+
+      <div class="field">
+        <label for="ccnSms">${LANG?'SMS (ខ្មែរ)':'SMS (Khmer)'}</label>
+        <textarea id="ccnSms" rows="3" placeholder="${LANG?'អត្ថបទខ្លីសម្រាប់ផ្ញើតាម SMS':'Short text for SMS delivery'}" style="font:inherit;font-size:.9rem;padding:.6rem .75rem;border-radius:10px;border:1.5px solid var(--line);resize:vertical"></textarea>
+        <div class="sms-meter" id="smsMeter">${smsMeter('').html}</div>
+      </div>
+
+      <div class="field">
+        <label>${LANG?'ការមើលការជូនដំណឹង':'Notification preview'}</label>
+        <p class="small" style="margin-bottom:.2rem">${LANG
+          ?'របៀបដែលវាបង្ហាញនៅលើអេក្រង់ចាក់សោ — ធៀបជាមួយពេលទូរស័ព្ទត្រូវបានសម្គាល់ថារួម (Safe contact)។'
+          :'How this looks as a lock-screen notification — next to what shows when the handset is marked shared (Safe contact).'}</p>
+        <div id="smsPreviewRow">${variantPreviewRow('')}</div>
+      </div>
+
+      <div class="field">
+        <label for="ccnIvr">${LANG?'ស្គ្រីប IVR (ខ្មែរ អានឮៗ)':'IVR script (Khmer, read aloud)'}</label>
+        <textarea id="ccnIvr" rows="3" placeholder="${LANG?'អត្ថបទសម្រាប់ការហៅសំឡេងស្វ័យប្រវត្តិ':'Text for the automated voice call'}" style="font:inherit;font-size:.9rem;padding:.6rem .75rem;border-radius:10px;border:1.5px solid var(--line);resize:vertical"></textarea>
+        <div class="ivr-meter" id="ivrMeter">${ivrMeter('').html}</div>
+      </div>
+
       <div class="cta-row">
         <button class="btn btn-primary" type="submit">${LANG?'បង្កើតជាព្រាង':'Create draft'}</button>
         <a class="btn btn-ghost" href="#/cms/content">${LANG?'បោះបង់':'Cancel'}</a>
@@ -307,16 +358,26 @@ export function pageCmsContentNew(role){
   `;
   return cmsShell({role, active:'content', title: LANG?'ធាតុថ្មី':'New content item', inner});
 }
-export function cmsCreateContent({title, topic, minutes, summary, body}){
+export function cmsCreateContent({title, topic, minutes, summary, body, smsKm, ivrScript}){
   const slug = (title||'untitled').toLowerCase().trim()
     .replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').slice(0,60) || 'untitled-'+Date.now();
   const item = {
     slug, topic, status:'draft', minutes: Math.max(1, parseInt(minutes,10)||2),
     reviewed: new Date().toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}),
-    title, summary, body: (body||'').split('\n').map(s=>s.trim()).filter(Boolean)
+    title, summary, body: (body||'').split('\n').map(s=>s.trim()).filter(Boolean),
+    smsKm: (smsKm||'').trim(), ivrScript: (ivrScript||'').trim()
   };
   allLibraryItems().push(item);
   return item;
+}
+/* Add or revise the SMS/IVR variant on an item that already exists —
+   channel variants can be drafted after the item itself, and revised
+   independently, without touching its web/library body or status. */
+export function cmsSetContentVariants(slug, {smsKm, ivrScript}){
+  const item = allLibraryItems().find(x=>x.slug===slug);
+  if(!item) return;
+  if(smsKm !== undefined) item.smsKm = smsKm.trim();
+  if(ivrScript !== undefined) item.ivrScript = ivrScript.trim();
 }
 
 export function pageCmsContentDetail(role, slug){
@@ -346,6 +407,34 @@ export function pageCmsContentDetail(role, slug){
     <div id="cmsActionArea" class="cms-actions" style="margin-top:1.4rem">
       ${actions.length ? actions.join('') : `<p class="small">${LANG?'តួនាទីរបស់អ្នកមានសិទ្ធិមើលតែប៉ុណ្ណោះ។':'Your role has read-only access here.'}</p>`}
     </div>
+
+    <hr style="border:none;border-top:1px solid var(--line);margin:1.6rem 0">
+    <p class="eyebrow" style="display:block;margin-bottom:.6rem">${LANG?'ព្រែកតាមឆានែល (§6.4)':'Channel variants (§6.4)'}</p>
+    ${CMS_CAN_EDIT.includes(role) ? `
+      <form id="cmsVariantForm" data-slug="${slug}" style="max-width:60ch;display:flex;flex-direction:column;gap:1rem">
+        <div class="field">
+          <label for="ccnSms">${LANG?'SMS (ខ្មែរ)':'SMS (Khmer)'}</label>
+          <textarea id="ccnSms" rows="3" style="font:inherit;font-size:.9rem;padding:.6rem .75rem;border-radius:10px;border:1.5px solid var(--line);resize:vertical">${item.smsKm||''}</textarea>
+          <div class="sms-meter${smsMeter(item.smsKm||'').over?' over':''}" id="smsMeter">${smsMeter(item.smsKm||'').html}</div>
+        </div>
+        <div class="field">
+          <label>${LANG?'ការមើលការជូនដំណឹង':'Notification preview'}</label>
+          <div id="smsPreviewRow">${variantPreviewRow(item.smsKm||'')}</div>
+        </div>
+        <div class="field">
+          <label for="ccnIvr">${LANG?'ស្គ្រីប IVR (ខ្មែរ អានឮៗ)':'IVR script (Khmer, read aloud)'}</label>
+          <textarea id="ccnIvr" rows="3" style="font:inherit;font-size:.9rem;padding:.6rem .75rem;border-radius:10px;border:1.5px solid var(--line);resize:vertical">${item.ivrScript||''}</textarea>
+          <div class="ivr-meter${ivrMeter(item.ivrScript||'').over?' over':''}" id="ivrMeter">${ivrMeter(item.ivrScript||'').html}</div>
+        </div>
+        <button class="btn btn-primary btn-sm" type="submit" style="align-self:start">${LANG?'រក្សាទុកព្រែក':'Save variants'}</button>
+        <p class="small" id="variantSaveOk" hidden style="color:var(--ok)">${LANG?'បានរក្សាទុក។':'Saved.'}</p>
+      </form>
+    ` : `
+      <p class="small" style="margin-bottom:.6rem">${LANG?'SMS (ខ្មែរ)':'SMS (Khmer)'}: ${item.smsKm || `<em>${LANG?'មិនទាន់សរសេរ':'not yet drafted'}</em>`}</p>
+      ${item.smsKm ? `<div class="sms-meter">${smsMeter(item.smsKm).html}</div>${variantPreviewRow(item.smsKm)}` : ''}
+      <p class="small" style="margin:1rem 0 .3rem">${LANG?'ស្គ្រីប IVR':'IVR script'}: ${item.ivrScript || `<em>${LANG?'មិនទាន់សរសេរ':'not yet drafted'}</em>`}</p>
+      ${item.ivrScript ? `<div class="ivr-meter">${ivrMeter(item.ivrScript).html}</div>` : ''}
+    `}
   `;
   return cmsShell({role, active:'content', title: LANG?'មាតិកា':'Content', inner});
 }

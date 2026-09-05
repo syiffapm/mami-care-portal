@@ -283,6 +283,26 @@ export function evidenceBadge(evidenceKey){
   return `<span class="evbadge ${e.tone}">${LANG?e.km:e.en}</span>`;
 }
 
+/* A miniature phone-notification mockup — shared by two places: the CMS
+   content composer's "safe-contact preview beside every variant" (§6.4),
+   and the client app's own "how a message arrives" screen. When `safe`
+   is on, the body is replaced with a neutral placeholder — nothing
+   celebratory, nothing identifying, ever shows on a locked screen that
+   might not be hers alone. Pure render function: callers re-invoke it
+   on every input event to keep the preview live. */
+export function notifPreview({ sender='Mami Care', time='9:41', body, safe=false }){
+  const shown = safe
+    ? (LANG?'អ្នកមានសារថ្មីមួយ។ បើកកម្មវិធីដើម្បីមើល។':'You have a new message. Open the app to see it.')
+    : ((body||'').trim() || (LANG?'(សារនៅទទេ)':'(nothing typed yet)'));
+  return `<div class="notif-card${safe?' safe':''}">
+    <span class="notif-icon">${I.heart}</span>
+    <div class="notif-body">
+      <div class="notif-top"><b>${safe?(LANG?'សារ':'Message'):sender}</b><span>${time}</span></div>
+      <p>${shown}</p>
+    </div>
+  </div>`;
+}
+
 /* ============================================================
    Facility Portal shell (§6.2) — a midwife-facing operational
    surface. Deliberately not the citizen phone-frame: a shared clinic
