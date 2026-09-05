@@ -89,6 +89,24 @@ export function escalateToPerson(id){
   pushToHelpdeskQueue(c);
 }
 
+/* A follow-up message in an existing conversation — the thread stays
+   open rather than starting a new case each time. If nobody is already
+   on their way, this re-opens/escalates it, exactly like tapping
+   "No, I need more help" would. */
+export function continueCase(id, text){
+  const c = getCase(id);
+  const q = (text||'').trim();
+  if(!c || !q) return;
+  c.thread.push({ from:'me', text:q });
+  if(!c.awaitingOperator){
+    c.status = 'escalated';
+    c.awaitingOperator = true;
+    c.thread.push({ from:'system', text:'connecting' });
+    const hc = HELPDESK_CASES.find(x=>x.id===id);
+    if(hc) hc.status = 'open'; else pushToHelpdeskQueue(c);
+  }
+}
+
 /* Fired once, after a short delay, by the page that's showing the thread —
    simulates the human reply that would really come from the helpdesk
    console (BR-88: within the approved scope, never a diagnosis). */

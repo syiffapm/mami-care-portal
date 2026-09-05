@@ -8,11 +8,12 @@ import { LANG, t, khNote } from './i18n.js';
 import {
   DEMO_PROFILE, LIBRARY_TOPICS, LIBRARY_ITEMS, libraryTopic, libraryItem, itemsInTopic,
   SUGGESTED_QUESTIONS, URGENT_SIGNS, REFERRALS, referral, CONSENT_TYPES,
-  HELPLINE_NUMBER, HELPLINE_HOURS, SC
+  HELPLINE_NUMBER, HELPLINE_HOURS, SC, PROVINCES, publicFacilities
 } from './data.js';
 import { appShell, contentRow, statusPill, referralStepper, stepProgress } from './components.js';
 import { MY_CASES, getCase } from './ask-state.js';
-import { ENROLL, enrollCode } from './enroll-state.js';
+import { ENROLL, enrollCode, applyEnrollToProfile } from './enroll-state.js';
+import { facilityCard } from './pages.js';
 
 /* Small 404 that stays inside the app shell rather than dropping back to
    the marketing "page not found" screen. */
@@ -202,16 +203,24 @@ export function pageAppAskThread(id){
   const c = getCase(id);
   if(!c) return pageAppMissing();
   const showHelpful = c.status==='answered_auto';
+  const closed = c.status==='closed';
   const inner = `
     <div class="askthread">${c.thread.map(askBubble).join('')}</div>
     ${c.awaitingOperator ? `<p class="asksys" id="askWaiting">${LANG?'បុគ្គលិកជំនួយកំពុងអានសំណួររបស់អ្នក…':'A helpdesk operator is reading your question…'}</p>` : ''}
     ${showHelpful ? `<div class="cta-row" style="justify-content:center;margin-top:.6rem">
       <button class="btn btn-ghost" data-ask-action="helpful" data-case="${c.id}">${LANG?'វាមានប្រយោជន៍':'That helped'}</button>
       <button class="btn btn-ghost" data-ask-action="not-helpful" data-case="${c.id}">${LANG?'ទេ, ត្រូវការជំនួយបន្ថែម':'No, I need more help'}</button>
-    </div>` : ''}
-    ${(c.status==='answered_auto') ? `<p class="small" style="text-align:center;margin-top:1rem">${LANG?'ឬ':'or'}
+    </div>
+    <p class="small" style="text-align:center;margin-top:.9rem">${LANG?'ឬ':'or'}
       <a href="#/app/callback" style="color:var(--brand);font-weight:600">${LANG?'ស្នើសុំការហៅត្រឡប់ជំនួសវិញ':'request a call back instead'}</a></p>` : ''}
-    ${c.status!=='answered_auto' ? `<div id="askThreadMeta" data-case="${c.id}" data-awaiting="${c.awaitingOperator}" style="text-align:center;margin-top:1.4rem">${askStatusPill(c.status)}</div>` : ''}
+    <div id="askThreadMeta" data-case="${c.id}" data-awaiting="${c.awaitingOperator}" style="text-align:center;margin:1.2rem 0 .9rem">${askStatusPill(c.status)}</div>
+    ${closed
+      ? `<a class="btn btn-ghost" style="width:100%" href="#/app/ask">${LANG?'សួរសំណួរថ្មី':'Ask a new question'} ${I.arrow}</a>`
+      : `<form id="askReplyForm" data-case="${c.id}" style="display:flex;gap:.6rem">
+           <input type="text" id="askReplyText" placeholder="${LANG?'សរសេរសារ…':'Type a message…'}" autocomplete="off"
+             style="flex:1;font:inherit;font-size:.92rem;padding:.7rem 1rem;border-radius:99px;border:1.5px solid var(--line)">
+           <button class="btn btn-primary" type="submit" aria-label="${LANG?'ផ្ញើ':'Send'}" style="border-radius:99px;width:46px;padding:0;flex:0 0 auto">${I.arrow}</button>
+         </form>`}
   `;
   return appShell({active:'ask', title: c.id, back:'#/app/ask', inner});
 }
@@ -222,7 +231,7 @@ export function pageAppCallback(){
     <div class="stepbox" style="margin-bottom:1.2rem">
       <h3>${LANG?'ហៅឥឡូវនេះ':'Call now'}</h3>
       <p style="font-size:.92rem;color:var(--ink-2);margin-bottom:.9rem">${LANG?`ខ្សែជំនួយឥតគិតថ្លៃ បើកម៉ោង ${HELPLINE_HOURS}។`:`Free from any network, open ${HELPLINE_HOURS}.`}</p>
-      <a class="btn btn-primary" style="width:100%" href="tel:${HELPLINE_NUMBER.replace(/\s+/g,'')}">${I.phone} ${HELPLINE_NUMBER}</a>
+      <a class="btn btn-primary" style="width:100%" href="#/app/calling">${I.phone} ${HELPLINE_NUMBER}</a>
     </div>
     <p class="eyebrow" style="display:block;margin-bottom:.7rem">${LANG?'ឬស្នើសុំឱ្យគេហៅមកអ្នក':'Or ask us to call you'}</p>
     <form id="callbackForm" style="display:flex;flex-direction:column;gap:1rem">
@@ -251,6 +260,25 @@ export function pageAppCallback(){
   return appShell({active:'ask', title: LANG?'ជំនួយពីបុគ្គលិក':'Talk to a person', back:'#/app/ask', inner});
 }
 
+/* Simulates what tapping the helpline button actually does — a tel:
+   link is invisible in a desktop browser with no paired phone, so the
+   call itself is played out on-screen instead: ringing, then
+   connected with a running timer, then hang up. */
+export function pageAppCalling(){
+  const inner = `
+    <div style="text-align:center">
+      <div class="call-avatar">${I.phone}</div>
+      <h1 style="font-size:1.3rem">${LANG?'ខ្សែជំនួយ Mami Care':'Mami Care Helpline'}</h1>
+      <p class="small" style="margin-top:.3rem;font-family:var(--font-mono)">${HELPLINE_NUMBER}</p>
+      <p id="callStatus" style="margin-top:1.6rem;color:var(--ink-2);font-size:.95rem">${LANG?'កំពុងហៅ…':'Calling…'}</p>
+      <p id="callTimer" class="small" style="margin-top:.3rem;font-family:var(--font-mono)" hidden>00:00</p>
+    </div>
+    <button id="endCallBtn" class="call-hangup" aria-label="${LANG?'ដាក់ចុះ':'End call'}">${I.phone}</button>
+    <p class="small" style="text-align:center;margin-top:1rem">${LANG?'ការសាកល្បង — គ្មានការហៅពិតប្រាកដទេ':'Simulated — no real call is placed'}</p>
+  `;
+  return appShell({tabs:false, back:'#/app/callback', title:'', inner});
+}
+
 /* ============ Urgent guidance — reachable from every app screen ============ */
 export function pageAppUrgent(){
   const group = (title, kh, signs) => `
@@ -268,7 +296,7 @@ export function pageAppUrgent(){
     <div class="stepbox" style="margin-top:1.5rem">
       <h3>${LANG?'ត្រូវការនរណាម្នាក់ឥឡូវនេះ?':'Need someone right now?'}</h3>
       <p style="font-size:.92rem;color:var(--ink-2)">${LANG?`ខ្សែជំនួយឥតគិតថ្លៃ បើកម៉ោង ${HELPLINE_HOURS}។`:`Free from any network, open ${HELPLINE_HOURS}.`}</p>
-      <a class="btn btn-primary" style="width:100%;margin-top:.9rem" href="tel:${HELPLINE_NUMBER.replace(/\s+/g,'')}">${I.phone} ${HELPLINE_NUMBER}</a>
+      <a class="btn btn-primary" style="width:100%;margin-top:.9rem" href="#/app/calling">${I.phone} ${HELPLINE_NUMBER}</a>
     </div>
   `;
   return appShell({active:'', title: LANG?'ការណែនាំបន្ទាន់':'Urgent guidance', back:'#/app/today', inner});
@@ -284,8 +312,32 @@ export function pageAppReferrals(){
       ${statusPill(r.status)}
     </a>`).join('') : `<p class="small">${LANG?'អ្នកមិនទាន់មានការបញ្ជូនបន្តទេ':'You have no referrals yet.'}</p>`;
   const inner = `${list}
-    <a class="chip" href="#/facilities" style="margin-top:.9rem;display:inline-flex">${I.pin} ${LANG?'ស្វែងរកមណ្ឌលសុខភាពផ្សេងទៀត':'Search other facilities'} ${I.arrow}</a>`;
+    <a class="chip" href="#/app/facilities" style="margin-top:.9rem;display:inline-flex">${I.pin} ${LANG?'ស្វែងរកមណ្ឌលសុខភាពផ្សេងទៀត':'Search other facilities'} ${I.arrow}</a>`;
   return appShell({active:'', title: LANG?'ការបញ្ជូនបន្ត':'My referrals', back:'#/app/today', inner});
+}
+
+/* ============ Find care near you — inside the app, same directory the
+   public site uses (facilityCard from pages.js), so results never drift
+   between the two surfaces. ============ */
+export function pageAppFacilities(){
+  const all = publicFacilities();
+  const inner = `
+    <p class="small" style="margin-bottom:1rem">${LANG
+      ?'យើងមិនប្រើទីតាំង GPS ត្រឹមត្រូវទេ — ស្វែងរកតាមខេត្ត ឬឈ្មោះ ហើយបើកក្នុងផែនទីសម្រាប់ទិសដៅ។'
+      :'We never store your precise location — search by province, then open a result in Maps for directions.'}</p>
+    <select id="facProvince" style="width:100%;font:inherit;font-size:.9rem;padding:.6rem .8rem;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);margin-bottom:.7rem">
+      <option value="">${LANG?'គ្រប់ខេត្ត':'All provinces'}</option>
+      ${PROVINCES.map(p=>`<option value="${p}">${p}</option>`).join('')}
+    </select>
+    <div class="segs" data-group="fac-type" style="margin-bottom:1.1rem">
+      <button type="button" class="seg" data-v="" aria-pressed="true">${LANG?'ទាំងអស់':'All types'}</button>
+      <button type="button" class="seg" data-v="Health Centre" aria-pressed="false">${LANG?'មណ្ឌលសុខភាព':'Health Centre'}</button>
+      <button type="button" class="seg" data-v="Referral Hospital" aria-pressed="false">${LANG?'មន្ទីរពេទ្យបញ្ជូនបន្ត':'Referral Hospital'}</button>
+    </div>
+    <div id="facResults" style="display:flex;flex-direction:column;gap:.9rem">${all.map(facilityCard).join('')}</div>
+    <p id="facEmpty" class="small" hidden style="margin-top:1rem">${LANG?'រកមិនឃើញមណ្ឌលសុខភាពដែលត្រូវនឹងលក្ខខណ្ឌនេះទេ។':'No facilities match that search.'}</p>
+  `;
+  return appShell({active:'', title: LANG?'ស្វែងរកសេវាថែទាំ':'Find care near you', back:'#/app/today', inner});
 }
 
 export function pageAppReferralDetail(id){
@@ -334,6 +386,7 @@ export function pageAppMe(){
     ${link('#/app/me/consent', I.shield, 'Consent centre','មជ្ឈមណ្ឌលការយល់ព្រម','See and change what you have agreed to.')}
     ${link('#/app/me/data', I.lock, 'My data','ទិន្នន័យរបស់ខ្ញុំ','What we store, and how to request or delete it.')}
     ${link('#/app/me/phone', I.sms, 'Change phone number','ប្តូរលេខទូរស័ព្ទ','Move your account to a new number.')}
+    ${link('#/app/facilities', I.pin, 'Find care near you','ស្វែងរកសេវាថែទាំ','Search health centres and referral hospitals by province.')}
     <a class="btn btn-ghost" style="width:100%;margin-top:1.6rem" href="#/">${LANG?'ចាកចេញពីការសាកល្បង':'Exit the demo'}</a>
   `;
   return appShell({active:'me', title: LANG?'ខ្ញុំ':'Me', back:'#/app/today', inner});
@@ -345,10 +398,10 @@ export function pageAppPreferences(){
     <form id="prefForm" style="display:flex;flex-direction:column;gap:1.3rem">
       <div class="field full">
         <label>${LANG?'តើគួរទាក់ទងអ្នកតាមមធ្យោបាយណា?':'How should we contact you?'}</label>
-        <div class="segs" data-group="pref-channel">
-          <button type="button" class="seg" data-v="sms" aria-pressed="${p.channel==='sms'}">SMS</button>
-          <button type="button" class="seg" data-v="voice" aria-pressed="${p.channel==='voice'}">${LANG?'ការហៅជាសំឡេង':'Voice call'}</button>
-          <button type="button" class="seg" data-v="app" aria-pressed="${p.channel==='app'}">${LANG?'កម្មវិធី':'The app'}</button>
+        <div class="segs" data-group="pref-channel" data-multi="1">
+          <button type="button" class="seg" data-v="sms" aria-pressed="${p.channel.includes('sms')}">SMS</button>
+          <button type="button" class="seg" data-v="voice" aria-pressed="${p.channel.includes('voice')}">${LANG?'ការហៅជាសំឡេង':'Voice call'}</button>
+          <button type="button" class="seg" data-v="app" aria-pressed="${p.channel.includes('app')}">${LANG?'កម្មវិធី':'The app'}</button>
         </div>
       </div>
       <div class="field full">
@@ -414,17 +467,33 @@ export function pageAppConsent(){
   return appShell({active:'me', title: LANG?'ការយល់ព្រម':'Consent centre', back:'#/app/me', inner});
 }
 
+const CHANNEL_LABEL = { sms:['SMS','SMS'], voice:['Voice call','ការហៅជាសំឡេង'], app:['The app','កម្មវិធី'] };
+const TIME_LABEL = { morning:['Morning','ព្រឹក'], afternoon:['Afternoon','រសៀល'], evening:['Evening','ល្ងាច'] };
 export function pageAppData(){
+  const p = DEMO_PROFILE;
+  const profileRows = [
+    [LANG?'លេខទូរស័ព្ទ':'Phone number', p.phoneMasked],
+    [LANG?'ភាសា':'Language', p.language==='km'?'ភាសាខ្មែរ':'English'],
+    [LANG?'មធ្យោបាយទំនាក់ទំនង':'Contact channel', p.channel.map(c=>LANG?CHANNEL_LABEL[c][1]:CHANNEL_LABEL[c][0]).join(', ')],
+    [LANG?'ពេលវេលា':'Time window', LANG?TIME_LABEL[p.timeWindow][1]:TIME_LABEL[p.timeWindow][0]],
+    [LANG?'ដំណាក់កាល':'Stage', LANG?p.stageKh:p.stageLabel],
+    [LANG?'ការផ្ទៀងផ្ទាត់':'Verification', p.status==='verified' ? (LANG?'បានផ្ទៀងផ្ទាត់':'Verified') : (LANG?'បណ្តោះអាសន្ន':'Provisional')],
+    [LANG?'មណ្ឌលសុខភាព':'Linked facility', p.facility || (LANG?'មិនទាន់ភ្ជាប់':'Not linked yet')]
+  ];
   const fields = [
-    [LANG?'ព័ត៌មានទំនាក់ទំនង':'Contact details', LANG?'លេខទូរស័ព្ទ ភាសា មធ្យោបាយ':'Phone number, language, channel'],
-    [LANG?'កាលបរិច្ឆេទដំណាក់កាល':'Stage dates', LANG?'ថ្ងៃកំណត់សម្រាល ឬថ្ងៃកំណើតកូន':'Due date or child’s date of birth'],
-    [LANG?'មណ្ឌលសុខភាព':'Linked facility', DEMO_PROFILE.facility || (LANG?'មិនទាន់ភ្ជាប់':'Not linked yet')],
     [LANG?'ប្រវត្តិការយល់ព្រម':'Consent history', LANG?'អ្វីដែលអ្នកបានយល់ព្រម និងពេលណា':'What you agreed to, and when'],
     [LANG?'សង្ខេបប្រវត្តិសារ':'Message history summary', LANG?'ចំនួន និងកាលបរិច្ឆេទផ្ញើ':'Counts and dates only, not content re-shown here'],
     [LANG?'ករណីជំនួយ':'Helpdesk cases', LANG?'សំណួរដែលអ្នកបានសួរ':'Questions you have asked'],
     [LANG?'ការបញ្ជូនបន្ត':'Referrals', LANG?'ការណែនាំដែលអ្នកបានទទួល':'Suggestions you have received']
   ];
   const inner = `
+    <p class="eyebrow" style="display:block;margin-bottom:.7rem">${LANG?'ប្រវត្តិរូបរបស់អ្នក':'Your profile'}</p>
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:0 1.1rem;margin-bottom:1.4rem">
+      ${profileRows.map((r,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.75rem 0;${i<profileRows.length-1?'border-bottom:1px solid var(--line-soft)':''}">
+        <span class="small">${r[0]}</span><span style="font-weight:600;text-align:right">${r[1]}</span>
+      </div>`).join('')}
+    </div>
+    <p class="eyebrow" style="display:block;margin-bottom:.7rem">${LANG?'អ្វីទាំងអស់ដែលយើងរក្សាទុក':'Everything else we store'}</p>
     <p class="small" style="margin-bottom:1rem">${LANG?'នេះជាអ្វីទាំងអស់ដែលយើងរក្សាទុកអំពីអ្នកនៅក្នុងសេវានេះ។'
       :'This is everything this service stores about you.'}</p>
     <ul class="plist">${fields.map(f=>`<li>${I.dot}<span><b>${f[0]}</b><br><span class="small">${f[1]}</span></span></li>`).join('')}</ul>
@@ -585,6 +654,7 @@ function joinStep4(){
 
 function joinStep5(){
   const code = enrollCode();
+  applyEnrollToProfile();
   return joinShell(0,3,'', undefined, `
     <div class="okpanel"><span style="color:var(--ok)">${I.check}</span>
       <div><h3>${LANG?'អ្នកបានចុះឈ្មោះជាបណ្តោះអាសន្នរួចហើយ':'You’re provisionally enrolled'}</h3>
@@ -623,7 +693,7 @@ export function pageAppLogin(){
       <button class="btn btn-primary" id="loginContinue" style="width:100%">${LANG?'បន្ត':'Continue'}</button>
     </div>
     <p class="small" style="margin-top:1.1rem;text-align:center">${LANG?'មិនទាន់មានគណនី?':'No account yet?'} <a href="#/app/join" style="color:var(--brand);font-weight:600">${LANG?'ចូលរួមឥតគិតថ្លៃ':'Join free'}</a></p>
-    <div class="callout" style="margin-top:1.2rem"><p><strong>${LANG?'មិនអាចទទួលបានលេខកូដ?':'Cannot get the code?'}</strong> <a href="tel:${HELPLINE_NUMBER.replace(/\s+/g,'')}" style="color:var(--brand);font-weight:600">${LANG?'ហៅខ្សែជំនួយ':'Call the helpline'}</a> — ${LANG?'ពួកគេអាចផ្ទៀងផ្ទាត់អ្នកតាមវិធីផ្សេង។':'they can verify you another way.'}</p></div>
+    <div class="callout" style="margin-top:1.2rem"><p><strong>${LANG?'មិនអាចទទួលបានលេខកូដ?':'Cannot get the code?'}</strong> <a href="#/app/calling" style="color:var(--brand);font-weight:600">${LANG?'ហៅខ្សែជំនួយ':'Call the helpline'}</a> — ${LANG?'ពួកគេអាចផ្ទៀងផ្ទាត់អ្នកតាមវិធីផ្សេង។':'they can verify you another way.'}</p></div>
   `;
   return appShell({tabs:false, back:'#/', title: LANG?'ចូលគណនី':'Log in', inner});
 }

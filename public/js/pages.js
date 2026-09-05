@@ -349,7 +349,7 @@ ${ctaBand()}`;}
    a live map. Each card links out to a map by place name for directions,
    and only ever shows the fields safe for the public (no enrolment or
    referral-volume figures — those never appear outside the CMS). */
-function facilityCard(f){
+export function facilityCard(f){
   const mapsQuery = encodeURIComponent(`${f.name}, ${f.area}, ${f.province}, Cambodia`);
   return `<div class="fac-card" data-province="${f.province}" data-type="${f.type}">
     <div class="fac-head"><span class="ci" style="background:var(--accent-soft);color:var(--accent)">${I.pin}</span>

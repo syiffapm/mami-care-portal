@@ -3,11 +3,11 @@
    client-portal demo: enrolment wizard, ask-a-question, preferences,
    consent centre, referrals. */
 import { I } from './icons.js';
-import { LANG, t, toggleLang } from './i18n.js';
-import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS } from './data.js';
+import { LANG, t, toggleLang, setLang } from './i18n.js';
+import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE } from './data.js';
 import { renderJourney } from './components.js';
 import { ENROLL, enrollCode, gestationalWeeks } from './enroll-state.js';
-import { startAskCase, markHelpful, markNotHelpful, deliverOperatorReply } from './ask-state.js';
+import { startAskCase, markHelpful, markNotHelpful, deliverOperatorReply, continueCase } from './ask-state.js';
 import {
   pageHome, pageServices, pageWho, pageJourney, detailPage,
   pageNews, pageArticle, pageFaq, pageAbout, pageHelp,
@@ -15,8 +15,8 @@ import {
 } from './pages.js';
 import {
   pageAppToday, pageAppLibrary, pageAppTopic, pageAppContent, pageAppAsk, pageAppAskThread,
-  pageAppUrgent, pageAppReferrals, pageAppReferralDetail, pageAppMe, pageAppCallback,
-  pageAppPreferences, pageAppConsent, pageAppData, pageAppPhone, pageAppMissing,
+  pageAppUrgent, pageAppReferrals, pageAppReferralDetail, pageAppMe, pageAppCallback, pageAppCalling,
+  pageAppPreferences, pageAppConsent, pageAppData, pageAppPhone, pageAppMissing, pageAppFacilities,
   pageAppJoin, pageAppLogin, pageAppOnboarding
 } from './pages-app.js';
 import { CMS, setCmsRole, setCmsLoggedIn, cmsSignOut } from './cms-state.js';
@@ -78,6 +78,8 @@ function routeApp(p){
   if(sub==='ask' && p[2]) return pageAppAskThread(p[2]);
   if(sub==='ask') return pageAppAsk();
   if(sub==='callback') return pageAppCallback();
+  if(sub==='calling') return pageAppCalling();
+  if(sub==='facilities') return pageAppFacilities();
   if(sub==='urgent') return pageAppUrgent();
   if(sub==='referrals' && p[2]) return pageAppReferralDetail(p[2]);
   if(sub==='referrals') return pageAppReferrals();
@@ -157,6 +159,7 @@ function wireForms(){
   wireAskAPage();
   wireAskThread();
   wireCallbackForm();
+  wireCallingScreen();
   wireFacilitySearch();
   wirePreferences();
   wireConsentCentre();
@@ -270,6 +273,16 @@ function wireAskThread(){
       route();
     });
   });
+
+  const replyForm = document.getElementById('askReplyForm');
+  if(replyForm) replyForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    const input = document.getElementById('askReplyText');
+    const val = input.value.trim();
+    if(!val) return;
+    continueCase(replyForm.dataset.case, val);
+    route();
+  });
 }
 
 /* ---------- talk to a person: request a call back (#/app/callback) ---------- */
@@ -279,7 +292,36 @@ function wireCallbackForm(){
   f.addEventListener('submit', e=>{ e.preventDefault(); f.hidden=true; document.getElementById('callbackOk').hidden=false; });
 }
 
-/* ---------- public facility search (#/facilities) ---------- */
+/* ---------- simulated phone call (#/app/calling) ----------
+   A tel: link does nothing visible in a desktop browser with no paired
+   phone, so the call is played out on-screen instead: ringing, then
+   connected with a running timer, until "end call" sends you back. */
+let callTimers = [];
+function clearCallTimers(){ callTimers.forEach(clearTimeout); callTimers.forEach(clearInterval); callTimers=[]; }
+function wireCallingScreen(){
+  clearCallTimers();
+  const status = document.getElementById('callStatus');
+  const timerEl = document.getElementById('callTimer');
+  const endBtn = document.getElementById('endCallBtn');
+  if(!status || !endBtn) return;
+  callTimers.push(setTimeout(()=>{
+    status.textContent = LANG?'បានភ្ជាប់':'Connected';
+    timerEl.hidden = false;
+    let secs = 0;
+    timerEl.textContent = '00:00';
+    callTimers.push(setInterval(()=>{
+      secs++;
+      const m = String(Math.floor(secs/60)).padStart(2,'0'), s = String(secs%60).padStart(2,'0');
+      timerEl.textContent = `${m}:${s}`;
+    }, 1000));
+  }, 1800));
+  endBtn.addEventListener('click', ()=>{
+    clearCallTimers();
+    location.hash = '#/app/callback';
+  });
+}
+
+/* ---------- public facility search (#/facilities, #/app/facilities) ---------- */
 function wireFacilitySearch(){
   const provinceSel = document.getElementById('facProvince');
   const results = document.getElementById('facResults');
@@ -309,8 +351,33 @@ function wirePreferences(){
   if(!pf) return;
   pf.addEventListener('submit', e=>{
     e.preventDefault();
-    const pressed = grp => { const b=pf.querySelector(`.segs[data-group="${grp}"] .seg[aria-pressed="true"]`); return b?b.textContent:''; };
-    const chanLabel = pressed('pref-channel'), timeLabel = pressed('pref-time');
+    const pressedLabel = grp => { const b=pf.querySelector(`.segs[data-group="${grp}"] .seg[aria-pressed="true"]`); return b?b.textContent:''; };
+    const pressedLabels = grp => [...pf.querySelectorAll(`.segs[data-group="${grp}"] .seg[aria-pressed="true"]`)].map(b=>b.textContent);
+    const pressedValues = grp => [...pf.querySelectorAll(`.segs[data-group="${grp}"] .seg[aria-pressed="true"]`)].map(b=>b.dataset.v);
+
+    /* Actually persist the change — Today/Me/My data all read DEMO_PROFILE,
+       so a saved preference is visible everywhere immediately, not just
+       on this form. */
+    const chanValues = pressedValues('pref-channel');
+    if(chanValues.length) DEMO_PROFILE.channel = chanValues;
+    const timeValues = pressedValues('pref-time');
+    if(timeValues[0]) DEMO_PROFILE.timeWindow = timeValues[0];
+    const freqValues = pressedValues('pref-freq');
+    if(freqValues[0]) DEMO_PROFILE.frequency = freqValues[0];
+    DEMO_PROFILE.safeContact = document.getElementById('safeContact').checked;
+    const newLang = pressedValues('pref-lang')[0];
+    const langChanged = newLang && (newLang==='km' ? 1 : 0) !== LANG;
+    if(newLang) DEMO_PROFILE.language = newLang;
+
+    const chanLabel = pressedLabels('pref-channel').join(' + ') || 'SMS', timeLabel = pressedLabel('pref-time');
+    if(langChanged){
+      /* Language is a site-wide setting, not just an app preference —
+         changing it here actually re-renders everything in the new
+         language, same as the header toggle. */
+      setLang(newLang==='km' ? 1 : 0);
+      route();
+      return;
+    }
     const txt = document.getElementById('prefOkText');
     if(txt) txt.textContent = LANG
       ? `អ្នកនឹងទទួលបានសារតាម ${chanLabel} ក្នុងអំឡុងពេល ${timeLabel}។`

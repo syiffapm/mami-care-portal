@@ -232,13 +232,21 @@ export const news = sl => NEWS.find(n=>n.slug===sl);
    ============================================================ */
 
 /* ============ demo profile ============ */
+/* The default demo persona shown before anyone has actually joined
+   (e.g. navigating straight to #/app/today). The instant the join
+   wizard finishes, enroll-state.js's applyEnrollToProfile() overwrites
+   these fields in place with what was actually entered — Today, Me,
+   Preferences and My data all read from this one mutable object, so
+   the app never shows a "person" unrelated to what you just did. */
 export const DEMO_PROFILE = {
   status:'provisional',                 /* provisional | verified */
   stageLabel:'Pregnant · week 22',
   stageKh:'មានផ្ទៃពោះ · សប្តាហ៍ទី ២២',
   dueLabel:'Baby due around 3 December 2026',
   facility:null,                        /* set once a midwife verifies you */
-  channel:'sms',                        /* sms | voice | app */
+  phoneMasked:'012 xxx x45',
+  language:'km',                        /* km | en */
+  channel:['sms'],                      /* one or more of: sms, voice, app */
   timeWindow:'evening',                 /* morning | afternoon | evening */
   frequency:'normal',                   /* normal | reduced */
   safeContact:false,

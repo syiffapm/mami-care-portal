@@ -254,6 +254,7 @@ a.aud p{font-size:.82rem;color:var(--muted);margin-top:.15rem}
 .choice{display:grid;grid-template-columns:auto 1fr;gap:.9rem;padding:1.1rem 0;border-top:1px solid var(--line-soft)}
 .choice:first-child{border-top:0}
 .choice .ci{width:34px;height:34px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.choice .ci svg{width:18px;height:18px}
 .choice h3{font-family:inherit;font-size:.98rem;font-weight:700;letter-spacing:0;margin-bottom:.15rem}
 .choice p{font-size:.89rem;color:var(--ink-2)}
 
@@ -418,7 +419,7 @@ footer{background:var(--surface-2);border-top:1px solid var(--line);padding-bloc
   grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line)}
 .apptabs a{display:flex;flex-direction:column;align-items:center;gap:.2rem;padding:.6rem 0 .55rem;
   text-decoration:none;color:var(--muted);font-size:.68rem;font-weight:600}
-.apptabs a svg{opacity:.75}
+.apptabs a svg{opacity:.75;width:20px;height:20px}
 .apptabs a.on{color:var(--brand)}
 .apptabs a.on svg{opacity:1}
 
@@ -439,6 +440,7 @@ footer{background:var(--surface-2);border-top:1px solid var(--line);padding-bloc
   padding:1rem 1.1rem;margin-bottom:1.1rem}
 .actioncard .ai{width:40px;height:40px;border-radius:99px;background:var(--surface);color:var(--accent);
   display:grid;place-items:center;flex:0 0 auto}
+.actioncard .ai svg{width:20px;height:20px}
 .actioncard b{display:block;font-size:.92rem}
 .actioncard span{font-size:.82rem;color:var(--ink-2)}
 
@@ -448,6 +450,7 @@ footer{background:var(--surface-2);border-top:1px solid var(--line);padding-bloc
   transition:border-color .18s ease,transform .18s ease}
 .ccard:hover{border-color:var(--brand);transform:translateY(-2px)}
 .ccard .playdot{color:var(--brand);flex:0 0 auto;width:44px;height:44px;display:grid;place-items:center}
+.ccard .playdot svg{width:22px;height:22px}
 .ccard .cbody{display:flex;flex-direction:column;gap:.15rem;min-width:0}
 .ccard b{font-size:.95rem;font-weight:700}
 .ccard .cmeta{font-family:var(--font-mono);font-size:.68rem;color:var(--muted);letter-spacing:.02em}
@@ -624,6 +627,7 @@ footer{background:var(--surface-2);border-top:1px solid var(--line);padding-bloc
 .fac-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem}
 .fac-head{display:flex;align-items:flex-start;gap:.8rem}
 .fac-head .ci{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto}
+.fac-head .ci svg{width:20px;height:20px}
 
 /* ============================================================
    Ask-a-question chat thread (#/app/ask/:id) — L1 automated answers
@@ -640,3 +644,11 @@ footer{background:var(--surface-2);border-top:1px solid var(--line);padding-bloc
   color:var(--muted);margin-bottom:.35rem}
 .askrow.operator .asklabel{color:var(--accent)}
 .asksys{text-align:center;font-size:.78rem;color:var(--muted);padding:.2rem 0;margin:0}
+
+/* ---------- simulated phone call (#/app/calling) ---------- */
+.call-avatar{width:110px;height:110px;border-radius:99px;background:var(--brand-soft);color:var(--brand);
+  display:grid;place-items:center;margin:2.5rem auto 1.4rem}
+.call-avatar svg{width:44px;height:44px}
+.call-hangup{width:64px;height:64px;border-radius:99px;background:var(--urgent);color:#fff;border:0;
+  display:grid;place-items:center;box-shadow:var(--shadow-lift);margin:3rem auto 0;cursor:pointer}
+.call-hangup svg{width:24px;height:24px;transform:rotate(135deg)}
