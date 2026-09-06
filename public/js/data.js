@@ -940,14 +940,24 @@ export const FACILITY_CLIENTS = [
    Sign-in is simulated (facility-state.js), but the worklist and the
    verify flow both read as though a specific named, credentialed
    midwife is at the wheel — because on a real shared device, one
-   always is. */
-/* A real device would authenticate against an identity provider (§13:
+   always is.
+
+   A real device would authenticate against an identity provider (§13:
    "Identity — Buy — never build authentication") — out of scope for a
-   static demo. What isn't out of scope is *looking* like a sign-in: a
-   shared clinic tablet rotates between staff fast, so a short PIN per
-   worker (not a typed email/password) is the realistic shape here, and
-   this demo actually checks it rather than letting any tap through. */
-export const FACILITY_STAFF = { name:'Sok Ratana', role:'Midwife', staffCode:'MW-1042', pin:'4821' };
+   static demo. What isn't out of scope is *looking* like a real sign-in:
+   an account per credentialed worker, created once (with their facility
+   assignment fixed at that point, not chosen fresh every time), and a
+   short PIN — not a typed email/password — since a shared clinic tablet
+   rotates between several people in a shift. `facility` is carried on
+   the account itself, not asked again at sign-in, because that's what
+   "assigned when the account was registered" means. */
+export const FACILITY_STAFF_ROSTER = [
+  { id:'MW-1042', name:'Sok Ratana', role:'Midwife', pin:'4821', facility:FACILITY_NAME },
+  { id:'CHV-0318', name:'Pich Sokha', role:'Community health volunteer', pin:'2390', facility:FACILITY_NAME }
+];
+export function facilityStaffByPin(pin){
+  return FACILITY_STAFF_ROSTER.find(s => s.pin === (pin||'').trim()) || null;
+}
 
 /* ============ helpdesk composer safety gate (§6.3) ============
    An operator may send only an approved item, an approved macro, or

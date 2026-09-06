@@ -4,7 +4,7 @@
    consent centre, referrals. */
 import { I } from './icons.js';
 import { LANG, t, toggleLang, setLang } from './i18n.js';
-import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE, JOURNEY, FACILITY_STAFF } from './data.js';
+import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE, JOURNEY, facilityStaffByPin } from './data.js';
 import { renderJourney, notifPreview } from './components.js';
 import { ENROLL, enrollCode, gestationalWeeks } from './enroll-state.js';
 import { startAskCase, markHelpful, markNotHelpful, deliverOperatorReply, continueCase } from './ask-state.js';
@@ -20,9 +20,9 @@ import {
   pageAppJoin, pageAppLogin, pageAppOnboarding, pageAppMessages
 } from './pages-app.js';
 import { CMS, setCmsRole, setCmsLoggedIn, cmsSignOut } from './cms-state.js';
-import { FACILITY_SESSION, setFacilitySignedIn } from './facility-state.js';
+import { FACILITY_SESSION, setFacilitySignedIn, identifyFacilityStaff, startFacilityShift } from './facility-state.js';
 import {
-  pageFacilityLogin, pageFacilityToday, pageFacilityEnroll, pageFacilitySync, pageFacilityVerify,
+  pageFacilityLogin, pageFacilityShiftStart, pageFacilityToday, pageFacilityEnroll, pageFacilitySync, pageFacilityVerify,
   pageFacilityWorklist, pageFacilityClients, pageFacilityProfile,
   facilityLookupByCode, facilityConfirmVerification, facilityVerifyRow, facilityMarkFollowedUp
 } from './pages-facility.js';
@@ -137,8 +137,13 @@ function routeCms(p){
    the worklist behind an explicit tap (simulated — see
    facility-state.js). */
 function routeFacility(p){
-  if(!FACILITY_SESSION.signedIn || p[1]==='login') return pageFacilityLogin();
   const sub = p[1];
+  if(!FACILITY_SESSION.signedIn){
+    // A PIN has been matched (identifyFacilityStaff), but the shift hasn't
+    // started yet — that's its own screen and its own hash, not a modal.
+    if(sub==='shift-start' && FACILITY_SESSION.staff) return pageFacilityShiftStart();
+    return pageFacilityLogin();
+  }
   if(!sub || sub==='today') return pageFacilityToday();
   if(sub==='enroll') return pageFacilityEnroll();
   if(sub==='verify') return pageFacilityVerify();
@@ -414,17 +419,23 @@ function wireFacilitySearch(){
    renders and freezes the elapsed time into the confirmation. */
 function wireFacilitySignIn(){
   const form = document.getElementById('facLoginForm');
-  if(!form) return;
-  form.addEventListener('submit', e=>{
+  if(form) form.addEventListener('submit', e=>{
     e.preventDefault();
     const pin = document.getElementById('facPin').value.trim();
     const err = document.getElementById('facLoginError');
-    if(pin !== FACILITY_STAFF.pin){
+    const staff = facilityStaffByPin(pin);
+    if(!staff){
       if(err) err.hidden = false;
       return;
     }
     if(err) err.hidden = true;
-    setFacilitySignedIn(true);
+    identifyFacilityStaff(staff); // the PIN tells us WHO — starting the shift is a separate, explicit step
+    location.hash = '#/facility/shift-start';
+  });
+
+  const startBtn = document.getElementById('facStartShift');
+  if(startBtn) startBtn.addEventListener('click', ()=>{
+    startFacilityShift();
     location.hash = '#/facility/today';
   });
 }

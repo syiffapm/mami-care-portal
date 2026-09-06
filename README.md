@@ -96,15 +96,20 @@ describes without mistaking it for the real thing:
   9-stage funnel and the §10 cost-per-channel/per-subscriber/scale-scenario
   figures are the exact placeholder numbers from the blueprint, not a
   live computation.
-- **Facility Portal** — sign-in now actually checks a 4-digit staff PIN
-  against `FACILITY_STAFF.pin` (a wrong PIN is rejected with an error;
-  the demo PIN is shown on the page itself, same transparency as the
-  CMS's "any email/password" note) — the previous "Continue as health
-  worker" button let anyone in on any tap, with nothing to check against.
-  A real device would authenticate against an identity provider (§13:
-  "buy, never build"); a short PIN is the realistic *shape* of a shared
-  clinic tablet's sign-in, which is what this now simulates instead of
-  skipping the step. A top nav (Today / Clients / Profile) instead of
+- **Facility Portal** — sign-in is now a real account per credentialed
+  worker (`FACILITY_STAFF_ROSTER` in `data.js`, two demo accounts with
+  their own PIN and facility assignment), not one shared PIN: entering a
+  PIN identifies *who* it is and shows a "Welcome back" screen naming
+  their registered facility (fixed at registration, never re-asked), and
+  starting a shift is a second, separate, explicit step from there — a
+  wrong PIN is rejected with an error, and identifying without starting
+  a shift grants no access. (The earlier version had first a single
+  unconditional "Continue as health worker" button, then a single shared
+  PIN with no account behind it — neither modelled "an account per
+  worker.") A real device would still authenticate against an identity
+  provider (§13: "buy, never build"); a short PIN per worker is the
+  realistic *shape* of a shared clinic tablet's sign-in, which is what
+  this simulates. A top nav (Today / Clients / Profile) instead of
   a single dead-end screen: Today's four worklist cards each open a real
   masked list (not just a count), "Provisional, awaiting verification"
   lets a midwife verify straight from the list with one tap per row

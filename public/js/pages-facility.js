@@ -8,18 +8,19 @@
 import { I } from './icons.js';
 import { LANG } from './i18n.js';
 import {
-  FACILITY_WORKLIST, FACILITY_NAME, FACILITY_CODE, FACILITY_STAFF, CONSENT_TYPES, DEMO_PROFILE,
+  FACILITY_WORKLIST, FACILITY_NAME, FACILITY_CODE, FACILITY_STAFF_ROSTER, CONSENT_TYPES, DEMO_PROFILE,
   FACILITY_PROVISIONAL_SAMPLE, FACILITY_EDD_PASSED, FACILITY_MISSED, FACILITY_REFERRALS_OPEN,
   FACILITY_CLIENTS
 } from './data.js';
 import { facilityShell } from './components.js';
+import { FACILITY_SESSION } from './facility-state.js';
 
 /* A real device authenticates against an identity provider (§13 — buy,
    never build). What a shared clinic tablet actually looks like day to
-   day is a short staff PIN, not a typed email/password, since several
-   people rotate through the same device in a shift. This demo checks
-   the PIN for real (against FACILITY_STAFF.pin) rather than letting
-   any tap through — the earlier version had no field at all. */
+   day is a short PIN per registered worker, not a typed email/password,
+   since several people rotate through the same device in a shift. This
+   demo checks the PIN for real against the roster (facilityStaffByPin
+   in data.js) rather than letting any tap through. */
 export function pageFacilityLogin(){
   return `
 <section>
@@ -44,11 +45,44 @@ export function pageFacilityLogin(){
           ${LANG?'ចូល':'Sign in'} ${I.arrow}</button>
       </form>
       <p class="small" style="margin-top:1.1rem">${LANG
-        ?'សម្រាប់បុគ្គលិកមណ្ឌលសុខភាពដែលមានលិខិតបញ្ជាក់ប៉ុណ្ណោះ។ (សាកល្បង៖ កូដ 4821)'
-        :'For credentialed facility staff only. (Demo PIN: 4821 — for testing this preview.)'}</p>
+        ?'សម្រាប់បុគ្គលិកមណ្ឌលសុខភាពដែលមានលិខិតបញ្ជាក់ប៉ុណ្ណោះ។'
+        :'For credentialed facility staff only.'}</p>
+      <p class="small" style="margin-top:.4rem;color:var(--muted)">${LANG
+        ?'(សាកល្បង៖ 4821 សម្រាប់ សុខ រតនា, ឬ 2390 សម្រាប់ ពេជ្រ សុខា)'
+        :'(Demo PINs: 4821 for Sok Ratana, or 2390 for Pich Sokha — try both to see the account switch.)'}</p>
     </div>
   </div>
 </section>`;
+}
+
+/* Identifying a PIN and starting a shift are kept as two separate acts
+   (§ note in facility-state.js) — this screen is the second one. It
+   also surfaces the one thing that's supposed to have been fixed back
+   at registration, not asked again now: which facility this account is
+   for. If a colleague's PIN ends up here by mistake, this is the
+   confirmation moment before the worklist opens under their name. */
+export function pageFacilityShiftStart(){
+  const staff = FACILITY_SESSION.staff;
+  const initials = staff ? staff.name.split(' ').map(w=>w[0]).join('') : '';
+  const inner = `
+    <div class="stepbox" style="text-align:center">
+      <span style="display:inline-grid;place-items:center;width:56px;height:56px;border-radius:99px;
+        background:var(--brand-soft);color:var(--brand);margin:0 auto 1rem;font-size:1.2rem;font-weight:700">${initials}</span>
+      <h2 style="font-size:1.15rem">${LANG?'ស្វាគមន៍ត្រឡប់មកវិញ':'Welcome back'}, ${staff?.name}</h2>
+      <p class="small">${staff?.role} · ${staff?.id}</p>
+    </div>
+    <div class="stepbox" style="margin-top:1rem">
+      <p><b>${LANG?'ចុះឈ្មោះនៅ':'Registered to'}:</b> ${staff?.facility}</p>
+      <p class="small" style="margin-top:.6rem">${LANG
+        ?'នេះជាការចាត់តាំងតាំងពីការចុះឈ្មោះគណនីរបស់អ្នក — មិនមែនអ្វីដែលអ្នកជ្រើសរើសឥឡូវនេះទេ។'
+        :'Fixed when this account was registered — not something you choose now.'}</p>
+    </div>
+    <button class="btn btn-primary" id="facStartShift" style="width:100%;margin-top:1.3rem">
+      ${LANG?'ចាប់ផ្តើមវេន':'Start shift'} ${I.arrow}</button>
+    <a href="#/facility/login" class="btn btn-ghost" style="width:100%;margin-top:.6rem;display:block;text-align:center">
+      ${LANG?'មិនមែនអ្នក?':'Not you?'}</a>
+  `;
+  return facilityShell({title: LANG?'ចាប់ផ្តើមវេន':'Start your shift', back:'#/facility/login', inner});
 }
 
 /* The one "current subscriber" this demo can actually mutate
@@ -305,23 +339,30 @@ export function pageFacilityClients(){
 
 /* The credentialed person actually holding the device — a shared
    clinic tablet is still always signed in as someone specific. */
+function formatClock(d){
+  if(!d) return '—';
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
 export function pageFacilityProfile(){
-  const initials = FACILITY_STAFF.name.split(' ').map(w=>w[0]).join('');
+  const staff = FACILITY_SESSION.staff || {};
+  const initials = (staff.name||'').split(' ').map(w=>w[0]).join('');
   const inner = `
     <div class="stepbox" style="text-align:center">
       <span style="display:inline-grid;place-items:center;width:56px;height:56px;border-radius:99px;
         background:var(--brand-soft);color:var(--brand);margin:0 auto 1rem;font-size:1.2rem;font-weight:700">${initials}</span>
-      <h2 style="font-size:1.15rem">${FACILITY_STAFF.name}</h2>
-      <p class="small">${FACILITY_STAFF.role} · ${FACILITY_STAFF.staffCode}</p>
+      <h2 style="font-size:1.15rem">${staff.name}</h2>
+      <p class="small">${staff.role} · ${staff.id}</p>
     </div>
     <div class="stepbox" style="margin-top:1rem">
-      <p><b>${LANG?'មណ្ឌលសុខភាព':'Facility'}:</b> ${FACILITY_NAME}</p>
+      <p><b>${LANG?'ចុះឈ្មោះនៅ':'Registered to'}:</b> ${staff.facility}</p>
       <p style="margin-top:.4rem"><b>${LANG?'លេខកូដមណ្ឌល':'Facility code'}:</b> ${FACILITY_CODE}</p>
+      <p style="margin-top:.4rem"><b>${LANG?'ចាប់ផ្តើមវេនម៉ោង':'Shift started'}:</b> ${formatClock(FACILITY_SESSION.shiftStartedAt)}</p>
       <p class="small" style="margin-top:.8rem">${LANG
-        ?'ឧបករណ៍នេះបានចុះឈ្មោះជាមួយមណ្ឌលនេះ។ ការចូលប្រើនៅទីនេះគឺជាការសាកល្បង សម្រាប់សម័យនេះប៉ុណ្ណោះ។'
-        :'This device is registered to this facility. Sign-in here is simulated, for this browser session only.'}</p>
+        ?'ការចូលប្រើនៅទីនេះគឺជាការសាកល្បង សម្រាប់សម័យនេះប៉ុណ្ណោះ។'
+        :'Sign-in here is simulated, for this browser session only.'}</p>
     </div>
-    <button class="btn btn-ghost" id="facSignOut" style="width:100%;margin-top:1.3rem">${LANG?'ចាកចេញ':'Sign out'}</button>
+    <button class="btn btn-ghost" id="facSignOut" style="width:100%;margin-top:1.3rem">${LANG?'បញ្ចប់វេន':'End shift'}</button>
   `;
   return facilityShell({title: LANG?'ប្រវត្តិរូប':'Profile', active:'profile', inner});
 }
