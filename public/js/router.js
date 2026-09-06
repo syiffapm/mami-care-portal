@@ -6,7 +6,7 @@ import { I } from './icons.js';
 import { LANG, t, toggleLang, setLang } from './i18n.js';
 import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE, facilityRandomStaff } from './data.js';
 import { renderJourney, notifPreview } from './components.js';
-import { ENROLL, enrollCode, gestationalWeeks } from './enroll-state.js';
+import { ENROLL, enrollCode, gestationalWeeks, maskPhone } from './enroll-state.js';
 import { startAskCase, markHelpful, markNotHelpful, deliverOperatorReply, continueCase } from './ask-state.js';
 import {
   pageHome, pageServices, pageWho, pageJourney, detailPage,
@@ -20,7 +20,7 @@ import {
   pageAppJoin, pageAppLogin, pageAppOnboarding, pageAppMessages, appNotificationSample
 } from './pages-app.js';
 import { CMS, setCmsRole, setCmsLoggedIn, cmsSignOut } from './cms-state.js';
-import { FACILITY_SESSION, setFacilitySignedIn, identifyFacilityStaff, startFacilityShift } from './facility-state.js';
+import { FACILITY_SESSION, setFacilitySignedIn, identifyFacilityStaff, startFacilityShift, setLastEnrolled } from './facility-state.js';
 import {
   pageFacilityLogin, pageFacilityShiftStart, pageFacilityToday, pageFacilityEnroll, pageFacilitySync, pageFacilityVerify,
   pageFacilityWorklist, pageFacilityClients, pageFacilityProfile, pageFacilityRecordVisit,
@@ -509,6 +509,19 @@ function wireFacilityEnrollForm(){
     form.hidden = true;
     const timerBox = document.getElementById('facTimer');
     if(timerBox) timerBox.hidden = true;
+
+    // Enrol → consult → record → suggest a next step → reminder is one
+    // continuous visit for a real mother, so this remembers who was
+    // just enrolled — "Record a visit" defaults straight onto them,
+    // instead of sending the midwife to go find the same person again.
+    const dateKindBtn = document.querySelector('.segs[data-group="fac-datekind"] .seg[aria-pressed="true"]');
+    const dateKind = dateKindBtn ? dateKindBtn.dataset.v : 'edd';
+    const weeks = dateKind==='edd' ? gestationalWeeks('edd', document.getElementById('facDate').value) : null;
+    const stage = dateKind==='edd'
+      ? (weeks!=null ? (LANG?`មានផ្ទៃពោះ · សប្តាហ៍ទី ${weeks}`:`Pregnant · week ${weeks}`) : (LANG?'មានផ្ទៃពោះ':'Pregnant'))
+      : (LANG?'ឪពុកម្តាយកូនតូច':'Parent of a young child');
+    setLastEnrolled({ phoneMasked: maskPhone(document.getElementById('facPhone').value), stage });
+
     const ok = document.getElementById('facEnrollOk');
     if(ok){
       ok.hidden = false;
@@ -516,7 +529,9 @@ function wireFacilityEnrollForm(){
       ok.innerHTML = `<div class="okpanel"><span style="color:${withinTarget?'var(--ok)':'var(--warn)'}">${I.check}</span>
         <div><h3>${LANG?'ការចុះឈ្មោះបានបញ្ចប់':'Enrolment complete'}</h3>
         <p>${LANG?`បានចុះឈ្មោះក្នុងរយៈពេល ${secs} វិនាទី`:`Completed in ${secs} seconds`}${withinTarget?(LANG?' — ក្នុងគោលដៅ។':' — within target.'):(LANG?' — លើសគោលដៅបន្តិច នៅតែរក្សាទុក។':' — a little over target, still saved.')}</p>
-        <a class="btn btn-primary" style="margin-top:.8rem" href="#/facility/today">${LANG?'ត្រឡប់ទៅតារាងកិច្ចការ':'Back to worklist'}</a></div></div>`;
+        <a class="btn btn-primary" style="margin-top:.8rem;width:100%;display:block;text-align:center" href="#/facility/record-visit">
+          ${LANG?'កត់ត្រាលទ្ធផលពិគ្រោះថ្ងៃនេះ':'Record today’s consultation outcome'}</a>
+        <a class="btn btn-ghost" style="margin-top:.6rem;width:100%;display:block;text-align:center" href="#/facility/today">${LANG?'ត្រឡប់ទៅតារាងកិច្ចការ':'Back to worklist'}</a></div></div>`;
     }
   });
 }
@@ -542,6 +557,7 @@ function wireFacilityRecordVisit(){
     const needsFollowUp = followUp.checked;
     const nextDate = document.getElementById('facVisitDate').value;
     const msg = facilityRecordVisit({ isDemoProfile: who==='demo', visitType, needsFollowUp, nextDate });
+    if(who==='just-enrolled') setLastEnrolled(null); // used — don't default onto them again next time
 
     form.hidden = true;
     const ok = document.getElementById('facVisitOk');

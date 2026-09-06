@@ -53,7 +53,7 @@ function monthsSince(dateStr){
   const days = Math.floor((new Date()-d)/(24*60*60*1000));
   return days>=0 ? Math.floor(days/30.4) : null;
 }
-function maskPhone(phone){
+export function maskPhone(phone){
   const digits = (phone||'').replace(/\D/g,'');
   if(digits.length<5) return phone || '—';
   return `${digits.slice(0,3)} xxx x${digits.slice(-2)}`;

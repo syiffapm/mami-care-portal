@@ -313,6 +313,7 @@ function formatDateLabel(iso){
 }
 export function pageFacilityRecordVisit(){
   const options = VISIT_TYPES.map(v=>`<option value="${v}">${v}</option>`).join('');
+  const justEnrolled = FACILITY_SESSION.lastEnrolled;
   const inner = `
     <p class="small" style="margin-bottom:1.1rem">${LANG
       ?'នេះកត់ត្រាតែថាមានការមកពិនិត្យប៉ុណ្ណោះ — មិនមែនកំណត់ត្រាគ្លីនិកទេ។ សារនឹងផ្ញើទៅអតិថិជនដោយស្វ័យប្រវត្តិ។'
@@ -321,9 +322,13 @@ export function pageFacilityRecordVisit(){
       <div class="field">
         <label for="facVisitWho">${LANG?'អតិថិជន':'Client'}</label>
         <select id="facVisitWho">
+          ${justEnrolled ? `<option value="just-enrolled" selected>${LANG?'ទើបចុះឈ្មោះថ្មីៗ':'Just enrolled'} — ${justEnrolled.phoneMasked} · ${justEnrolled.stage}</option>` : ''}
           <option value="demo">${LANG?'ប្រវត្តិរូបសាកល្បង (មានទូរស័ព្ទដែលអ្នកបានផ្ទៀងផ្ទាត់)':'This demo’s profile (the one you can verify end to end)'}</option>
           ${FACILITY_CLIENTS.map((c,i)=>`<option value="${i}">${c.phoneMasked} — ${c.stage}</option>`).join('')}
         </select>
+        ${justEnrolled ? `<p class="small" style="margin-top:.4rem;color:var(--muted)">${LANG
+          ?'បានជ្រើសរើសជាមុន ព្រោះនេះជាការចុះឈ្មោះថ្មីៗបំផុតរបស់អ្នក។'
+          :'Pre-selected — this is who you just enrolled.'}</p>` : ''}
       </div>
       <div class="field">
         <label for="facVisitType">${LANG?'ប្រភេទការមកពិនិត្យ':'Type of visit'}</label>

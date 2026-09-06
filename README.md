@@ -150,7 +150,16 @@ describes without mistaking it for the real thing:
   same state, and `#/app/messages`'s simulated notification shows this
   real message — not a generic stage reminder — once one has been
   recorded, via a `appNotificationSample()` helper shared by the page
-  and the router so the two never drift out of sync.
+  and the router so the two never drift out of sync. Enrolling and
+  recording a visit are also connected to each other, not two
+  disconnected buttons: enrol → consult → record → suggest a next step
+  → reminder is one visit for a real mother, so finishing "Enrol a
+  client" remembers who was just enrolled
+  (`FACILITY_SESSION.lastEnrolled`, set in `wireFacilityEnrollForm()`)
+  and offers "Record today's consultation outcome" right on the
+  confirmation screen — which pre-selects that same person on
+  `#/facility/record-visit` instead of asking the midwife to find them
+  again a moment later, and forgets them again once used.
 - **Helpdesk safety gate** (`FORBIDDEN_HEALTH_TERMS` in `data.js`) — a
   small demo lexicon standing in for the real content-moderation service
   described in §6.3.
