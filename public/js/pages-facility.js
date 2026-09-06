@@ -39,8 +39,8 @@ export function pageFacilityLogin(){
             placeholder="••••" autocomplete="off" autofocus style="text-align:center;letter-spacing:.4em;font-size:1.2rem">
         </div>
         <p id="facLoginError" class="small" style="color:var(--urgent);margin-top:.6rem" hidden>${LANG
-          ?'កូដសម្ងាត់មិនត្រឹមត្រូវទេ។ សូមសាកល្បងម្តងទៀត។'
-          :'Incorrect PIN. Try again.'}</p>
+          ?'សូមបញ្ចូលកូដសម្ងាត់ដើម្បីបន្ត។'
+          :'Enter a PIN to continue.'}</p>
         <button class="btn btn-primary" type="submit" style="width:100%;margin-top:1rem">
           ${LANG?'ចូល':'Sign in'} ${I.arrow}</button>
       </form>
@@ -48,8 +48,8 @@ export function pageFacilityLogin(){
         ?'សម្រាប់បុគ្គលិកមណ្ឌលសុខភាពដែលមានលិខិតបញ្ជាក់ប៉ុណ្ណោះ។'
         :'For credentialed facility staff only.'}</p>
       <p class="small" style="margin-top:.4rem;color:var(--muted)">${LANG
-        ?'(សាកល្បង៖ 4821 សម្រាប់ សុខ រតនា, ឬ 2390 សម្រាប់ ពេជ្រ សុខា)'
-        :'(Demo PINs: 4821 for Sok Ratana, or 2390 for Pich Sokha — try both to see the account switch.)'}</p>
+        ?'(សាកល្បង៖ បញ្ចូលលេខណាមួយ — គណនីមួយក្នុងចំណោមបុគ្គលិកដែលបានចុះឈ្មោះនឹងត្រូវជ្រើសរើសដោយចៃដន្យ)'
+        :'(Demo: any PIN works — you’ll be signed in as one of the credentialed accounts registered to this device, picked at random.)'}</p>
     </div>
   </div>
 </section>`;

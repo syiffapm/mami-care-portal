@@ -96,18 +96,23 @@ describes without mistaking it for the real thing:
   9-stage funnel and the §10 cost-per-channel/per-subscriber/scale-scenario
   figures are the exact placeholder numbers from the blueprint, not a
   live computation.
-- **Facility Portal** — sign-in is now a real account per credentialed
-  worker (`FACILITY_STAFF_ROSTER` in `data.js`, two demo accounts with
-  their own PIN and facility assignment), not one shared PIN: entering a
-  PIN identifies *who* it is and shows a "Welcome back" screen naming
-  their registered facility (fixed at registration, never re-asked), and
-  starting a shift is a second, separate, explicit step from there — a
-  wrong PIN is rejected with an error, and identifying without starting
-  a shift grants no access. (The earlier version had first a single
-  unconditional "Continue as health worker" button, then a single shared
-  PIN with no account behind it — neither modelled "an account per
-  worker.") A real device would still authenticate against an identity
-  provider (§13: "buy, never build"); a short PIN per worker is the
+- **Facility Portal** — sign-in is a real account per credentialed
+  worker (`FACILITY_STAFF_ROSTER` in `data.js`, two demo accounts, each
+  with a `pin` and a facility assignment fixed at registration), not one
+  shared persona: entering a PIN identifies *who* it is and shows a
+  "Welcome back" screen naming their registered facility, and starting a
+  shift is a second, separate, explicit step from there — identifying
+  without starting a shift grants no access. In this demo, any non-empty
+  PIN is accepted and lands on one of the two accounts *picked at
+  random* (`facilityRandomStaff()`) — deliberately not tied to memorising
+  which digits belong to which person, while every sign-in still lands
+  on one specific, named account rather than a generic persona; only an
+  empty submission is rejected. (Three iterations got here: first a
+  single unconditional button with no field at all, then one PIN that
+  had to match exactly, neither of which modelled "an account per
+  worker" the way this does.) A real device would still authenticate
+  against an identity provider (§13: "buy, never build"); a short PIN
+  per worker is the
   realistic *shape* of a shared clinic tablet's sign-in, which is what
   this simulates. A top nav (Today / Clients / Profile) instead of
   a single dead-end screen: Today's four worklist cards each open a real

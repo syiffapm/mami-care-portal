@@ -944,19 +944,21 @@ export const FACILITY_CLIENTS = [
 
    A real device would authenticate against an identity provider (§13:
    "Identity — Buy — never build authentication") — out of scope for a
-   static demo. What isn't out of scope is *looking* like a real sign-in:
-   an account per credentialed worker, created once (with their facility
-   assignment fixed at that point, not chosen fresh every time), and a
-   short PIN — not a typed email/password — since a shared clinic tablet
-   rotates between several people in a shift. `facility` is carried on
-   the account itself, not asked again at sign-in, because that's what
-   "assigned when the account was registered" means. */
+   static demo, and so is remembering a specific demo PIN per account.
+   What isn't out of scope is *looking* like a real sign-in: an account
+   per credentialed worker, created once, with their facility assignment
+   fixed at that point rather than chosen fresh every time. Each account
+   still carries its own `pin` (what a real deployment would check), but
+   this demo's login accepts any PIN typed and picks one of the accounts
+   at random — so trying it doesn't depend on knowing which digits go
+   with which person, while every sign-in still lands on one specific,
+   named, credentialed account rather than a generic persona. */
 export const FACILITY_STAFF_ROSTER = [
   { id:'MW-1042', name:'Sok Ratana', role:'Midwife', pin:'4821', facility:FACILITY_NAME },
   { id:'CHV-0318', name:'Pich Sokha', role:'Community health volunteer', pin:'2390', facility:FACILITY_NAME }
 ];
-export function facilityStaffByPin(pin){
-  return FACILITY_STAFF_ROSTER.find(s => s.pin === (pin||'').trim()) || null;
+export function facilityRandomStaff(){
+  return FACILITY_STAFF_ROSTER[Math.floor(Math.random() * FACILITY_STAFF_ROSTER.length)];
 }
 
 /* ============ helpdesk composer safety gate (§6.3) ============

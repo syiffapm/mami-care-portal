@@ -4,7 +4,7 @@
    consent centre, referrals. */
 import { I } from './icons.js';
 import { LANG, t, toggleLang, setLang } from './i18n.js';
-import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE, JOURNEY, facilityStaffByPin } from './data.js';
+import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE, JOURNEY, facilityRandomStaff } from './data.js';
 import { renderJourney, notifPreview } from './components.js';
 import { ENROLL, enrollCode, gestationalWeeks } from './enroll-state.js';
 import { startAskCase, markHelpful, markNotHelpful, deliverOperatorReply, continueCase } from './ask-state.js';
@@ -423,13 +423,15 @@ function wireFacilitySignIn(){
     e.preventDefault();
     const pin = document.getElementById('facPin').value.trim();
     const err = document.getElementById('facLoginError');
-    const staff = facilityStaffByPin(pin);
-    if(!staff){
+    if(!pin){
       if(err) err.hidden = false;
       return;
     }
     if(err) err.hidden = true;
-    identifyFacilityStaff(staff); // the PIN tells us WHO — starting the shift is a separate, explicit step
+    // Any PIN is accepted in this demo — which specific credentialed
+    // account it identifies is picked at random, so trying this out
+    // never depends on knowing a magic number.
+    identifyFacilityStaff(facilityRandomStaff());
     location.hash = '#/facility/shift-start';
   });
 
