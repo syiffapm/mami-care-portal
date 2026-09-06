@@ -733,7 +733,16 @@ footer{background:var(--surface-2);border-top:1px solid var(--line);padding-bloc
 .facbar .fname{font-size:.85rem;font-weight:600}
 .facbar .fcode{font-size:.68rem;opacity:.7;font-family:var(--font-mono)}
 .facbar a{color:var(--gov-ink);text-decoration:none;opacity:.8}
+.facnav{position:sticky;top:0;z-index:19;display:flex;background:var(--surface);border-bottom:1px solid var(--line)}
+.facnav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:.2rem;padding:.6rem .4rem;
+  font-size:.68rem;font-weight:600;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent}
+.facnav a svg{width:18px;height:18px}
+.facnav a.on{color:var(--brand);border-bottom-color:var(--brand)}
 .facbody{flex:1;padding:1.2rem 1.1rem 2rem}
+.fac-list-row{display:flex;justify-content:space-between;align-items:center;gap:1rem;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;padding:.85rem 1rem;margin-bottom:.7rem}
+.fac-list-row.done{opacity:.55}
+.fac-list-row .flr-meta{font-size:.78rem;color:var(--muted);margin-top:.15rem}
 .fac-worklist-card{display:flex;align-items:center;justify-content:space-between;gap:1rem;
   background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;
   padding:.9rem 1.1rem;margin-bottom:.7rem;text-decoration:none;color:inherit}

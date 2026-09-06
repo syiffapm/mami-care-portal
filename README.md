@@ -96,16 +96,23 @@ describes without mistaking it for the real thing:
   9-stage funnel and the §10 cost-per-channel/per-subscriber/scale-scenario
   figures are the exact placeholder numbers from the blueprint, not a
   live computation.
-- **Facility Portal** — includes verifying a provisional enrolment
-  (`#/facility/verify`, §6.2's "verify provisional" requirement): a
-  midwife enters the reference code a citizen was shown at the end of
-  Join, sees only masked data before committing, and confirming flips
-  `DEMO_PROFILE.status` to `verified` — which the citizen side reads
-  immediately, in the same session, so the "not verified yet" banner on
-  Today actually clears rather than just describing a step that doesn't
-  exist anywhere. Also previews the 90-second enrolment target and the
-  two-field-plus-defaults shape, but the timer, the consent attestation,
-  and "sync" are all simulated; there is no real offline storage.
+- **Facility Portal** — a top nav (Today / Clients / Profile) instead of
+  a single dead-end screen: Today's four worklist cards each open a real
+  masked list (not just a count), "Provisional, awaiting verification"
+  lets a midwife verify straight from the list with one tap per row
+  (§6.2's "verify provisional" requirement — manual reference-code entry
+  at `#/facility/verify` is kept as the fallback for anyone not showing
+  up in today's list), the other three categories get a lightweight
+  "mark followed up," Clients shows this facility's enrolled clients
+  (masked, read-only, no unmask control — a shared clinic device gets
+  less access than a programme admin), and Profile shows which
+  credentialed midwife the device is signed in as. Verifying the demo's
+  own profile flips `DEMO_PROFILE.status` to `verified`, which the
+  citizen side reads immediately, in the same session, so the "not
+  verified yet" banner on Today actually clears. Also previews the
+  90-second enrolment target and the two-field-plus-defaults shape, but
+  the timer, the consent attestation, and "sync" are all simulated;
+  there is no real offline storage.
 - **Helpdesk safety gate** (`FORBIDDEN_HEALTH_TERMS` in `data.js`) — a
   small demo lexicon standing in for the real content-moderation service
   described in §6.3.

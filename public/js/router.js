@@ -23,7 +23,8 @@ import { CMS, setCmsRole, setCmsLoggedIn, cmsSignOut } from './cms-state.js';
 import { FACILITY_SESSION, setFacilitySignedIn } from './facility-state.js';
 import {
   pageFacilityLogin, pageFacilityToday, pageFacilityEnroll, pageFacilitySync, pageFacilityVerify,
-  facilityLookupByCode, facilityConfirmVerification
+  pageFacilityWorklist, pageFacilityClients, pageFacilityProfile,
+  facilityLookupByCode, facilityConfirmVerification, facilityVerifyRow, facilityMarkFollowedUp
 } from './pages-facility.js';
 import {
   pageCmsCredentials, pageCmsDashboard, pageCmsContent, pageCmsContentNew, pageCmsContentDetail,
@@ -141,6 +142,9 @@ function routeFacility(p){
   if(!sub || sub==='today') return pageFacilityToday();
   if(sub==='enroll') return pageFacilityEnroll();
   if(sub==='verify') return pageFacilityVerify();
+  if(sub==='worklist' && p[2]) return pageFacilityWorklist(p[2]);
+  if(sub==='clients') return pageFacilityClients();
+  if(sub==='profile') return pageFacilityProfile();
   if(sub==='sync') return pageFacilitySync();
   return pageFacilityToday();
 }
@@ -190,9 +194,11 @@ function wireForms(){
   wireMessagePreview();
   wireFacilitySearch();
   wireFacilitySignIn();
+  wireFacilitySignOut();
   wireFacilityTimer();
   wireFacilityEnrollForm();
   wireFacilityVerify();
+  wireFacilityWorklistActions();
   wireFacilitySyncNow();
   wirePreferences();
   wireConsentCentre();
@@ -412,6 +418,31 @@ function wireFacilitySignIn(){
   btn.addEventListener('click', ()=>{
     setFacilitySignedIn(true);
     location.hash = '#/facility/today';
+  });
+}
+function wireFacilitySignOut(){
+  const btn = document.getElementById('facSignOut');
+  if(!btn) return;
+  btn.addEventListener('click', ()=>{
+    setFacilitySignedIn(false);
+    location.hash = '#/facility/login';
+  });
+}
+
+/* ---------- worklist lists: verify a row, or mark one followed up ---------- */
+function wireFacilityWorklistActions(){
+  document.querySelectorAll('[data-verify-row]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      facilityVerifyRow(b.dataset.verifyRow);
+      route();
+    });
+  });
+  document.querySelectorAll('[data-followup]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const [key, ref] = b.dataset.followup.split(':');
+      facilityMarkFollowedUp(key, ref);
+      route();
+    });
   });
 }
 

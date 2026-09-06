@@ -885,14 +885,63 @@ export function formatDuration(totalSeconds){
    in this demo before. Midwife-facing, offline-first, hard 90-second
    enrolment budget. Kept separate from the CMS: it is a categorically
    different, operational surface, not an admin console. ============ */
+/* Worklist categories only — no `count` here any more. Each count is
+   derived live from the sample rows below (or, for 'provisional', from
+   those rows plus whichever profile this browser session is currently
+   acting as), so the badge on Today never drifts from what the list
+   page actually shows. */
 export const FACILITY_WORKLIST = [
-  { key:'provisional', label:'Provisional, awaiting verification', kh:'បណ្តោះអាសន្ន រង់ចាំផ្ទៀងផ្ទាត់', count:4, tone:'brand' },
-  { key:'edd_passed', label:'EDD passed without a report', kh:'ហួសកាលបរិច្ឆេទ គ្មានរបាយការណ៍', count:2, tone:'warn' },
-  { key:'missed', label:'Missed appointments', kh:'ខកខានការណាត់ជួប', count:3, tone:'warn' },
-  { key:'referrals_open', label:'Referrals open more than 7 days', kh:'ការបញ្ជូនបន្តបើកលើសពី ៧ថ្ងៃ', count:1, tone:'warn' }
+  { key:'provisional', label:'Provisional, awaiting verification', kh:'បណ្តោះអាសន្ន រង់ចាំផ្ទៀងផ្ទាត់', tone:'brand' },
+  { key:'edd_passed', label:'EDD passed without a report', kh:'ហួសកាលបរិច្ឆេទ គ្មានរបាយការណ៍', tone:'warn' },
+  { key:'missed', label:'Missed appointments', kh:'ខកខានការណាត់ជួប', tone:'warn' },
+  { key:'referrals_open', label:'Referrals open more than 7 days', kh:'ការបញ្ជូនបន្តបើកលើសពី ៧ថ្ងៃ', tone:'warn' }
 ];
 export const FACILITY_NAME = 'Chbar Ampov Health Centre';
 export const FACILITY_CODE = 'PP-CHBA-01';
+
+/* ============ Facility Portal worklist detail (§6.2) — masked sample
+   rows behind each worklist count, scoped to this one facility. Same
+   masking rule as everywhere else in this demo: a reference code, a
+   masked phone number, and just enough context to recognise the right
+   person standing in front of you — never a name, never a full number,
+   never a clinical fact. `verified`/`followedUp` are mutated in place
+   as the midwife works through the list, same pattern as the CMS
+   helpdesk queue. */
+export const FACILITY_PROVISIONAL_SAMPLE = [
+  { ref:'MC-7F2Q', phoneMasked:'092 xxx x14', stage:'Pregnant · week 10', enrolledVia:'Self-enrolment (SMS)', daysWaiting:2, verified:false },
+  { ref:'MC-4KD8', phoneMasked:'016 xxx x77', stage:'Pregnant · week 6', enrolledVia:'Self-enrolment (QR)', daysWaiting:5, verified:false },
+  { ref:'MC-1PX3', phoneMasked:'070 xxx x02', stage:'Postpartum · week 1', enrolledVia:'Self-enrolment (SMS)', daysWaiting:1, verified:false }
+];
+export const FACILITY_EDD_PASSED = [
+  { ref:'MC-2RT5', phoneMasked:'098 xxx x41', stage:'Pregnant · EDD was 3 Sep 2026', daysOverdue:3, followedUp:false },
+  { ref:'MC-6LB9', phoneMasked:'077 xxx x28', stage:'Pregnant · EDD was 30 Aug 2026', daysOverdue:7, followedUp:false }
+];
+export const FACILITY_MISSED = [
+  { ref:'MC-3HN1', phoneMasked:'012 xxx x90', stage:'Pregnant · week 26', appointment:'Routine antenatal check', daysMissed:2, followedUp:false },
+  { ref:'MC-8QF4', phoneMasked:'096 xxx x36', stage:'Child · 9 months', appointment:'Immunisation', daysMissed:6, followedUp:false },
+  { ref:'MC-5VC7', phoneMasked:'015 xxx x63', stage:'Postpartum · week 4', appointment:'Postnatal check', daysMissed:1, followedUp:false }
+];
+export const FACILITY_REFERRALS_OPEN = [
+  { ref:'MC-4DJ2', phoneMasked:'089 xxx x17', stage:'Pregnant · week 33', reason:'Delivery preparation', daysOpen:9, followedUp:false }
+];
+
+/* ============ Facility Portal: clients already enrolled here ============
+   The "history" view — read-only, masked, this facility only. No
+   unmask control here (unlike the CMS): a shared clinic device gets
+   less access than a programme admin, not the same access. */
+export const FACILITY_CLIENTS = [
+  { ref:'MC-7QK2', phoneMasked:'012 xxx x45', stage:'Pregnant · week 22', verification:'verified', consent:'active', enrolled:'18 Jul 2026' },
+  { ref:'MC-2NB6', phoneMasked:'081 xxx x23', stage:'Postpartum · week 5', verification:'verified', consent:'active', enrolled:'2 Jun 2026' },
+  { ref:'MC-9YT1', phoneMasked:'093 xxx x88', stage:'Child · 4 months', verification:'verified', consent:'active', enrolled:'14 Apr 2026' },
+  { ref:'MC-5MC4', phoneMasked:'068 xxx x50', stage:'Pregnant · week 15', verification:'verified', consent:'paused', enrolled:'9 Aug 2026' }
+];
+
+/* ============ Facility Portal: the credentialed user of this device ============
+   Sign-in is simulated (facility-state.js), but the worklist and the
+   verify flow both read as though a specific named, credentialed
+   midwife is at the wheel — because on a real shared device, one
+   always is. */
+export const FACILITY_STAFF = { name:'Sok Ratana', role:'Midwife', staffCode:'MW-1042' };
 
 /* ============ helpdesk composer safety gate (§6.3) ============
    An operator may send only an approved item, an approved macro, or

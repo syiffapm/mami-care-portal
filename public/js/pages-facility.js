@@ -7,7 +7,11 @@
    is still simulated: there is no offline storage or real sync. */
 import { I } from './icons.js';
 import { LANG } from './i18n.js';
-import { FACILITY_WORKLIST, FACILITY_NAME, CONSENT_TYPES, DEMO_PROFILE } from './data.js';
+import {
+  FACILITY_WORKLIST, FACILITY_NAME, FACILITY_CODE, FACILITY_STAFF, CONSENT_TYPES, DEMO_PROFILE,
+  FACILITY_PROVISIONAL_SAMPLE, FACILITY_EDD_PASSED, FACILITY_MISSED, FACILITY_REFERRALS_OPEN,
+  FACILITY_CLIENTS
+} from './data.js';
 import { facilityShell } from './components.js';
 
 export function pageFacilityLogin(){
@@ -31,27 +35,115 @@ export function pageFacilityLogin(){
 </section>`;
 }
 
+/* The one "current subscriber" this demo can actually mutate
+   (DEMO_PROFILE) is folded into the sample provisional list as its
+   first row, always — so the worklist reads as one real, connected
+   list rather than a static screen plus a disconnected code box.
+   `verified` reflects her live status, so verifying her here (or via
+   the manual code-entry fallback) shows up the same way either way. */
+export function facilityProvisionalRows(){
+  const rows = FACILITY_PROVISIONAL_SAMPLE.slice();
+  if(DEMO_PROFILE.code){
+    rows.unshift({
+      ref: DEMO_PROFILE.code,
+      phoneMasked: DEMO_PROFILE.phoneMasked,
+      stage: LANG ? DEMO_PROFILE.stageKh : DEMO_PROFILE.stageLabel,
+      enrolledVia: LANG?'ចុះឈ្មោះដោយខ្លួនឯង':'Self-enrolment',
+      daysWaiting: 0,
+      verified: DEMO_PROFILE.status === 'verified',
+      isYou: true
+    });
+  }
+  return rows;
+}
+const FAC_LIST_BY_KEY = { edd_passed: FACILITY_EDD_PASSED, missed: FACILITY_MISSED, referrals_open: FACILITY_REFERRALS_OPEN };
+
+/* Live counts for the Today worklist badges — derived from the same
+   rows the list pages render, so the number on Today can never drift
+   from what actually shows when you tap into it. */
+export function facilityWorklistCount(key){
+  if(key === 'provisional') return facilityProvisionalRows().filter(r=>!r.verified).length;
+  const list = FAC_LIST_BY_KEY[key];
+  return list ? list.filter(r=>!r.followedUp).length : 0;
+}
+
 export function pageFacilityToday(){
   const inner = `
     <p class="small" style="margin-bottom:1.1rem">${LANG
-      ?'តារាងកិច្ចការថ្ងៃនេះ — មិនមែនទិន្នន័យគ្លីនិកទេ សញ្ញាសម្រាប់ការតាមដានប៉ុណ្ណោះ។'
-      :'Today’s worklist — no clinical data, just signals to follow up on.'}</p>
-    ${FACILITY_WORKLIST.map(w=>{
-      const clickable = w.key === 'provisional';
-      const tag = clickable ? 'a' : 'div';
-      const href = clickable ? ' href="#/facility/verify"' : '';
-      return `<${tag} class="fac-worklist-card ${w.tone}"${href}>
-        <span>${LANG?w.kh:w.label}</span><b>${w.count}</b>
-      </${tag}>`;
-    }).join('')}
+      ?'តារាងកិច្ចការថ្ងៃនេះ — មិនមែនទិន្នន័យគ្លីនិកទេ សញ្ញាសម្រាប់ការតាមដានប៉ុណ្ណោះ។ ចុចមួយណាដើម្បីមើលបញ្ជី។'
+      :'Today’s worklist — no clinical data, just signals to follow up on. Tap any one to see who’s on it.'}</p>
+    ${FACILITY_WORKLIST.map(w=>`
+      <a class="fac-worklist-card ${w.tone}" href="#/facility/worklist/${w.key}">
+        <span>${LANG?w.kh:w.label}</span><b>${facilityWorklistCount(w.key)}</b>
+      </a>`).join('')}
     <a class="btn btn-primary" style="width:100%;margin-top:1.4rem" href="#/facility/enroll">
       ${I.check} ${LANG?'ចុះឈ្មោះអតិថិជន':'Enrol a client'}</a>
-    <div class="cta-row" style="margin-top:.8rem">
-      <a class="btn btn-ghost" style="flex:1" href="#/facility/sync">${LANG?'ស្ថានភាពសមកាលកម្ម':'Sync status'}</a>
-      <a class="btn btn-ghost" style="flex:1" href="#/">${LANG?'ចាកចេញ':'Exit'}</a>
-    </div>
+    <a class="btn btn-ghost" style="width:100%;margin-top:.6rem" href="#/facility/sync">${LANG?'ស្ថានភាពសមកាលកម្ម':'Sync status'}</a>
   `;
-  return facilityShell({title: LANG?'កិច្ចការថ្ងៃនេះ':'Today’s worklist', inner});
+  return facilityShell({title: LANG?'កិច្ចការថ្ងៃនេះ':'Today’s worklist', active:'today', inner});
+}
+
+/* One list per worklist key. "Provisional" gets its own richer layout
+   (a Verify button per row, right where the count on Today pointed);
+   the other three share a lighter "mark followed up" pattern — the
+   blueprint is explicit these are signals to chase, not a workflow to
+   run in the tool itself. */
+export function pageFacilityWorklist(key){
+  if(key === 'provisional') return pageFacilityProvisionalList();
+  const cfg = {
+    edd_passed: {
+      title: LANG?'ហួសកាលបរិច្ឆេទ គ្មានរបាយការណ៍':'EDD passed without a report',
+      meta: r => `${r.stage} · ${LANG?`ហួសកាលបរិច្ឆេទ ${r.daysOverdue} ថ្ងៃ`:`${r.daysOverdue} day${r.daysOverdue===1?'':'s'} overdue`}`
+    },
+    missed: {
+      title: LANG?'ខកខានការណាត់ជួប':'Missed appointments',
+      meta: r => `${r.appointment} · ${LANG?`ខកខានកាលពី ${r.daysMissed} ថ្ងៃ`:`missed ${r.daysMissed} day${r.daysMissed===1?'':'s'} ago`}`
+    },
+    referrals_open: {
+      title: LANG?'ការបញ្ជូនបន្តបើកលើសពី ៧ថ្ងៃ':'Referrals open more than 7 days',
+      meta: r => `${r.reason} · ${LANG?`បើករយៈពេល ${r.daysOpen} ថ្ងៃ`:`open ${r.daysOpen} days`}`
+    }
+  }[key];
+  const list = FAC_LIST_BY_KEY[key];
+  if(!cfg || !list) return pageFacilityToday();
+
+  const rows = list.map(r=>`
+    <div class="fac-list-row${r.followedUp?' done':''}">
+      <div><b>${r.phoneMasked}</b><div class="flr-meta">${cfg.meta(r)}</div></div>
+      ${r.followedUp
+        ? `<span class="pill pill-ok">${LANG?'បានតាមដាន':'Followed up'}</span>`
+        : `<button class="btn btn-ghost btn-sm" data-followup="${key}:${r.ref}">${LANG?'សម្គាល់ថាបានតាមដាន':'Mark followed up'}</button>`}
+    </div>`).join('');
+  const inner = `
+    <p class="small" style="margin-bottom:1rem">${LANG
+      ?'សញ្ញាតាមដានប៉ុណ្ណោះ — មិនមែនកំណត់ត្រាគ្លីនិកទេ។'
+      :'A signal to follow up on, not a clinical record or a workflow to run here.'}</p>
+    ${rows || `<p class="small">${LANG?'គ្មានធាតុទេឥឡូវនេះ។':'Nothing here right now.'}</p>`}
+  `;
+  return facilityShell({title: cfg.title, back:'#/facility/today', inner});
+}
+
+function pageFacilityProvisionalList(){
+  const rows = facilityProvisionalRows();
+  const rowsHTML = rows.map(r=>`
+    <div class="fac-list-row${r.verified?' done':''}">
+      <div><b>${r.phoneMasked}</b>${r.isYou?` <span class="pill pill-brand">${LANG?'ប្រវត្តិរូបសាកល្បង':'this demo’s profile'}</span>`:''}
+        <div class="flr-meta">${r.stage} · ${r.enrolledVia} · ${LANG?`រង់ចាំ ${r.daysWaiting} ថ្ងៃ`:r.daysWaiting===0?'just now':`waiting ${r.daysWaiting} day${r.daysWaiting===1?'':'s'}`}</div></div>
+      ${r.verified
+        ? `<span class="pill pill-ok">${LANG?'បានផ្ទៀងផ្ទាត់':'Verified'}</span>`
+        : `<button class="btn btn-primary btn-sm" data-verify-row="${r.ref}">${LANG?'ផ្ទៀងផ្ទាត់':'Verify'}</button>`}
+    </div>`).join('');
+  const inner = `
+    <p class="small" style="margin-bottom:1rem">${LANG
+      ?'ផ្ទៀងផ្ទាត់ផ្ទាល់ពីបញ្ជីនេះ ពេលនាងនៅចំពោះមុខអ្នក — គ្មានការវាយបញ្ចូលកូដដោយខ្លួនឯងទេ លុះត្រាតែចាំបាច់។'
+      :'Verify straight from this list while she’s standing in front of you — no need to type a code unless you have to.'}</p>
+    ${rowsHTML || `<p class="small">${LANG?'គ្មានធាតុទេឥឡូវនេះ។':'Nothing waiting right now.'}</p>`}
+    <p class="small" style="margin-top:1.4rem">${LANG
+      ?'រកមិនឃើញនាងទេ? នាងអាចនឹងទើបតែចុះឈ្មោះ ឬចុះឈ្មោះនៅមណ្ឌលផ្សេង។'
+      :'Can’t find her here? She may have just enrolled, or done so through a different facility.'}
+      <a href="#/facility/verify" style="color:var(--brand);font-weight:600">${LANG?'បញ្ចូលកូដដោយផ្ទាល់':'Enter her code directly'} ${I.arrow}</a></p>
+  `;
+  return facilityShell({title: LANG?'បណ្តោះអាសន្ន រង់ចាំផ្ទៀងផ្ទាត់':'Provisional, awaiting verification', back:'#/facility/today', inner});
 }
 
 /* One screen, not a click-through wizard: the blueprint's own point
@@ -98,15 +190,15 @@ export function pageFacilityEnroll(){
 }
 
 /* Verify a provisional enrolment (§6.2 "Must exist" — QR / reference
-   code, masked data before verification). A citizen who self-enrols at
-   #/app/join is PROVISIONAL until a real midwife confirms her in
-   person; this is that confirmation. Only masked data is ever shown
-   before the midwife commits — never a full phone number, never a name. */
+   code, masked data before verification). Kept as the manual fallback
+   for whoever isn't in today's cached list; the list itself (above) is
+   the primary path now. Only masked data is ever shown before the
+   midwife commits — never a full phone number, never a name. */
 export function pageFacilityVerify(){
   const inner = `
     <p class="small" style="margin-bottom:1.1rem">${LANG
-      ?'សុំកូដយោង (បង្ហាញនៅលើកម្មវិធីរបស់អតិថិជន ពេលចុះឈ្មោះ) រួចផ្ទៀងផ្ទាត់នៅទីនេះ។'
-      :'Ask for the reference code shown on her app when she enrolled, then confirm it here.'}</p>
+      ?'សម្រាប់អ្នកមិននៅក្នុងបញ្ជីថ្ងៃនេះ — សុំកូដយោង (បង្ហាញនៅលើកម្មវិធីរបស់អតិថិជន ពេលចុះឈ្មោះ) រួចផ្ទៀងផ្ទាត់នៅទីនេះ។'
+      :'For anyone not showing up in today’s list — ask for the reference code shown on her app when she enrolled, then confirm it here.'}</p>
     <form id="facVerifyForm" style="display:flex;gap:.6rem;align-items:end;flex-wrap:wrap">
       <div class="field" style="flex:1 1 200px"><label for="facVerifyCode">${LANG?'កូដយោង':'Reference code'}</label>
         <input id="facVerifyCode" type="text" placeholder="MC-XXXX" autocapitalize="characters" autofocus></div>
@@ -114,7 +206,7 @@ export function pageFacilityVerify(){
     </form>
     <div id="facVerifyResult" style="margin-top:1.3rem"></div>
   `;
-  return facilityShell({title: LANG?'ផ្ទៀងផ្ទាត់ការចុះឈ្មោះ':'Verify a provisional enrolment', back:'#/facility/today', inner});
+  return facilityShell({title: LANG?'បញ្ចូលកូដដោយផ្ទាល់':'Enter a code directly', back:'#/facility/worklist/provisional', inner});
 }
 
 /* Pure lookup — this demo has exactly one "current subscriber"
@@ -129,6 +221,24 @@ export function facilityLookupByCode(code){
 export function facilityConfirmVerification(){
   DEMO_PROFILE.status = 'verified';
   DEMO_PROFILE.facility = FACILITY_NAME;
+}
+/* Verify a specific row straight from a worklist list — "you" (the
+   demo's live profile) goes through the real status flip so the
+   citizen side updates too; any other sample row just flips its own
+   local `verified` flag, since there's no second live profile behind
+   it to update. */
+export function facilityVerifyRow(ref){
+  if(DEMO_PROFILE.code && ref === DEMO_PROFILE.code){
+    facilityConfirmVerification();
+    return;
+  }
+  const row = FACILITY_PROVISIONAL_SAMPLE.find(r=>r.ref===ref);
+  if(row) row.verified = true;
+}
+export function facilityMarkFollowedUp(key, ref){
+  const list = FAC_LIST_BY_KEY[key];
+  const row = list && list.find(r=>r.ref===ref);
+  if(row) row.followedUp = true;
 }
 
 export function pageFacilitySync(){
@@ -153,4 +263,49 @@ export function pageFacilitySync(){
     </div>
   `;
   return facilityShell({title: LANG?'សមកាលកម្ម':'Sync', back:'#/facility/today', inner});
+}
+
+/* "History" — clients already enrolled at this facility. Read-only,
+   masked, no unmask control: a shared clinic device gets less access
+   than a programme admin, not the same access. */
+export function pageFacilityClients(){
+  const tone = v => v==='verified' || v==='active' ? 'ok' : v==='paused' ? 'warn' : '';
+  const rows = FACILITY_CLIENTS.map(c=>`
+    <div class="fac-list-row">
+      <div><b>${c.phoneMasked}</b><div class="flr-meta">${c.stage} · ${LANG?'បានចុះឈ្មោះ':'enrolled'} ${c.enrolled}</div></div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;justify-content:flex-end">
+        <span class="pill${tone(c.verification)?' pill-'+tone(c.verification):''}">${c.verification}</span>
+        <span class="pill${tone(c.consent)?' pill-'+tone(c.consent):''}">${c.consent}</span>
+      </div>
+    </div>`).join('');
+  const inner = `
+    <p class="small" style="margin-bottom:1rem">${LANG
+      ?`អតិថិជនដែលបានចុះឈ្មោះនៅ ${FACILITY_NAME}។ ទិន្នន័យលាក់ប៉ុណ្ណោះ — គ្មានឈ្មោះ គ្មានលេខទូរស័ព្ទពេញលេញ សូម្បីតែនៅទីនេះ។`
+      :`Clients enrolled at ${FACILITY_NAME}. Masked data only — no names, no full phone numbers, even here.`}</p>
+    ${rows || `<p class="small">${LANG?'គ្មានធាតុទេ':'Nothing here yet.'}</p>`}
+  `;
+  return facilityShell({title: LANG?'អតិថិជន':'Clients', active:'clients', inner});
+}
+
+/* The credentialed person actually holding the device — a shared
+   clinic tablet is still always signed in as someone specific. */
+export function pageFacilityProfile(){
+  const initials = FACILITY_STAFF.name.split(' ').map(w=>w[0]).join('');
+  const inner = `
+    <div class="stepbox" style="text-align:center">
+      <span style="display:inline-grid;place-items:center;width:56px;height:56px;border-radius:99px;
+        background:var(--brand-soft);color:var(--brand);margin:0 auto 1rem;font-size:1.2rem;font-weight:700">${initials}</span>
+      <h2 style="font-size:1.15rem">${FACILITY_STAFF.name}</h2>
+      <p class="small">${FACILITY_STAFF.role} · ${FACILITY_STAFF.staffCode}</p>
+    </div>
+    <div class="stepbox" style="margin-top:1rem">
+      <p><b>${LANG?'មណ្ឌលសុខភាព':'Facility'}:</b> ${FACILITY_NAME}</p>
+      <p style="margin-top:.4rem"><b>${LANG?'លេខកូដមណ្ឌល':'Facility code'}:</b> ${FACILITY_CODE}</p>
+      <p class="small" style="margin-top:.8rem">${LANG
+        ?'ឧបករណ៍នេះបានចុះឈ្មោះជាមួយមណ្ឌលនេះ។ ការចូលប្រើនៅទីនេះគឺជាការសាកល្បង សម្រាប់សម័យនេះប៉ុណ្ណោះ។'
+        :'This device is registered to this facility. Sign-in here is simulated, for this browser session only.'}</p>
+    </div>
+    <button class="btn btn-ghost" id="facSignOut" style="width:100%;margin-top:1.3rem">${LANG?'ចាកចេញ':'Sign out'}</button>
+  `;
+  return facilityShell({title: LANG?'ប្រវត្តិរូប':'Profile', active:'profile', inner});
 }

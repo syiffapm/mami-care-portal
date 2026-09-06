@@ -308,7 +308,18 @@ export function notifPreview({ sender='Mami Care', time='9:41', body, safe=false
    surface. Deliberately not the citizen phone-frame: a shared clinic
    device tool, not a consumer app.
    ============================================================ */
-export function facilityShell({title, back, inner}){
+const FAC_NAV = [
+  { key:'today', href:'#/facility/today', icon:I.home, en:'Today', kh:'ថ្ងៃនេះ' },
+  { key:'clients', href:'#/facility/clients', icon:I.table, en:'Clients', kh:'អតិថិជន' },
+  { key:'profile', href:'#/facility/profile', icon:I.user, en:'Profile', kh:'ប្រវត្តិរូប' }
+];
+
+/* `active` shows the tab strip (top-level screens only — a `back`
+   screen is a drill-down/action flow, not a place with its own tab).
+   Kept separate from the citizen phone-frame's bottom tabs on purpose:
+   this is a work tool, and a top strip reads as one, not as a consumer
+   app imitation. */
+export function facilityShell({title, back, active, inner}){
   return `<div class="facscreen">
     <div class="facbar">
       <div>
@@ -319,6 +330,8 @@ export function facilityShell({title, back, inner}){
         <div class="fcode">${FACILITY_CODE}</div>
       </div>
     </div>
+    ${!back ? `<nav class="facnav">${FAC_NAV.map(n=>
+      `<a href="${n.href}" class="${active===n.key?'on':''}">${n.icon}<span>${LANG?n.kh:n.en}</span></a>`).join('')}</nav>` : ''}
     <div class="facbody">${inner}</div>
   </div>`;
 }
