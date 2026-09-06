@@ -264,7 +264,9 @@ export const DEMO_PROFILE = {
   timeWindow:'evening',                 /* morning | afternoon | evening */
   frequency:'normal',                   /* normal | reduced */
   safeContact:false,
-  altContact:false
+  altContact:false,
+  lastVisit:null,                       /* {type, date} — set when a facility records a visit (§4 service_event.recorded) */
+  nextAppointment:null                  /* {type, date} — set alongside lastVisit when the visit needs a follow-up */
 };
 
 /* ============ library: topics ============ */

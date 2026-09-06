@@ -63,7 +63,12 @@ static, no-backend project. Four products share one codebase:
   single-screen fast-enrolment form with a live elapsed-time counter
   against the blueprint's 90-second target (two typed fields — phone
   and one date — plus a consent script panel and a required read-aloud
-  attestation), and an offline-sync status screen. Reached from the
+  attestation), recording a visit (§4 `service_event.recorded` — a
+  client, a non-diagnostic visit type from the controlled list, and a
+  yes/no on whether it needs a follow-up; recording one for the demo's
+  own profile sets what Today shows as "since your last visit" and, if
+  a follow-up was needed, schedules and announces a next appointment by
+  message), and an offline-sync status screen. Reached from the
   small "Facility" link next to "Staff" in the government strip, or the
   footer.
 
@@ -131,6 +136,21 @@ describes without mistaking it for the real thing:
   90-second enrolment target and the two-field-plus-defaults shape, but
   the timer, the consent attestation, and "sync" are all simulated;
   there is no real offline storage.
+- **Recording a visit** (`#/facility/record-visit`, §4
+  `service_event.recorded`) — the event that closes the loop between a
+  facility and a reminder: pick a client, a non-diagnostic visit type
+  from the same controlled list a referral uses, and whether it needs a
+  follow-up. Recording one for the demo's own profile is what actually
+  triggers the message — `facilityRecordVisit()` writes
+  `DEMO_PROFILE.lastVisit` (and `.nextAppointment` if a follow-up was
+  requested) and the confirmation panel shows the exact message that
+  would go out, using the same `notifPreview()` component as the CMS
+  composer and the app's own notification-preview screen. On the
+  citizen side, Today gains a "Since your last visit" card reading that
+  same state, and `#/app/messages`'s simulated notification shows this
+  real message — not a generic stage reminder — once one has been
+  recorded, via a `appNotificationSample()` helper shared by the page
+  and the router so the two never drift out of sync.
 - **Helpdesk safety gate** (`FORBIDDEN_HEALTH_TERMS` in `data.js`) — a
   small demo lexicon standing in for the real content-moderation service
   described in §6.3.

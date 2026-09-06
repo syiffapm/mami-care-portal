@@ -42,6 +42,14 @@ export function pageAppToday(){
       <h1${LANG?' class="km"':''}>${LANG?p.stageKh:p.stageLabel}</h1>
       <p>${p.dueLabel}</p>
     </div>
+    ${p.lastVisit ? `
+    <div class="actioncard" style="cursor:default">
+      <span class="ai">${I.check}</span>
+      <div><b${LANG?' class="km"':''}>${LANG?'តាំងពីការមកពិនិត្យលើកចុងក្រោយ':'Since your last visit'}</b>
+      <span>${p.lastVisit.type} · ${p.lastVisit.date}${p.nextAppointment
+        ? (LANG?` — លើកក្រោយ៖ ${p.nextAppointment.type} ជុំវិញ ${p.nextAppointment.date}`:` — next: ${p.nextAppointment.type} around ${p.nextAppointment.date}`)
+        : ''}</span></div>
+    </div>` : ''}
     <a class="actioncard" href="#/app/referrals/${next.id}" style="text-decoration:none;color:inherit">
       <span class="ai">${I.ref}</span>
       <div><b${LANG?' class="km"':''}>${LANG?'ការណែនាំបន្ទាប់របស់អ្នក':'Your next suggested visit'}</b>
@@ -65,9 +73,30 @@ export function pageAppToday(){
    client-side) — a lock-screen simulation, not real message history.
    Shows exactly what a reminder looks like as it arrives, and how that
    changes the moment the handset is marked shared. */
+/* The message this screen previews. If a facility has just recorded a
+   visit for this profile, that's the real message that triggered — not
+   a generic stage reminder — so both this page and the router's live
+   simulate/toggle wiring show the actual result of that action instead
+   of drifting out of sync with two copies of the same text. */
+export function appNotificationSample(){
+  const p = DEMO_PROFILE;
+  if(p.lastVisit){
+    return p.nextAppointment
+      ? {
+          en: `Thanks for coming in today for your ${p.lastVisit.type.toLowerCase()}. Your next appointment is around ${p.nextAppointment.date} — we’ll remind you closer to the time.`,
+          km: `អរគុណដែលបានមកពិនិត្យថ្ងៃនេះសម្រាប់ ${p.lastVisit.type}។ ការណាត់ជួបលើកក្រោយរបស់អ្នកគឺនៅជុំវិញ ${p.nextAppointment.date} — យើងនឹងរំលឹកអ្នកនៅពេលជិតដល់។`
+        }
+      : {
+          en: `Thanks for coming in today for your ${p.lastVisit.type.toLowerCase()}. Nothing further needed for now — we’ll keep sending your regular guidance.`,
+          km: `អរគុណដែលបានមកពិនិត្យថ្ងៃនេះសម្រាប់ ${p.lastVisit.type}។ មិនត្រូវការអ្វីបន្ថែមទេពេលនេះ — យើងនឹងបន្តផ្ញើការណែនាំធម្មតារបស់អ្នក។`
+        };
+  }
+  return { en: JOURNEY[1].en, km: JOURNEY[1].msg }; // fallback: a representative mid-pregnancy reminder
+}
+
 export function pageAppMessages(){
   const p = DEMO_PROFILE;
-  const sample = JOURNEY[1]; // a representative mid-pregnancy reminder
+  const sample = appNotificationSample();
   const inner = `
     <p class="small" style="margin-bottom:1rem">${LANG
       ?'នេះជាគំរូតែប៉ុណ្ណោះ — មិនមែនប្រវត្តិសារពិតទេ។ សូមសាកល្បងចុចប៊ូតុងខាងក្រោម។'
@@ -89,7 +118,7 @@ export function pageAppMessages(){
 
     <div id="openedMessage" hidden style="margin-top:1.5rem">
       <p class="eyebrow" style="display:block;margin-bottom:.6rem">${LANG?'សារដែលបានបើក':'Opened message'}</p>
-      <div class="bubble"><span class="km">${sample.msg}</span><span class="en">${sample.en}</span></div>
+      <div class="bubble"><span class="km">${sample.km}</span><span class="en">${sample.en}</span></div>
       <p class="small" style="margin-top:.7rem">${LANG
         ?'ឆ្លើយតប STOP ឬ ឈប់ ដើម្បីឈប់ទទួលសារនៅពេលណាក៏បាន — មិនចាំបាច់ជាមួយហេតុផលទេ។'
         :'Reply STOP at any time to stop receiving messages — no reason needed.'}</p>

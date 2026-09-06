@@ -4,7 +4,7 @@
    consent centre, referrals. */
 import { I } from './icons.js';
 import { LANG, t, toggleLang, setLang } from './i18n.js';
-import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE, JOURNEY, facilityRandomStaff } from './data.js';
+import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE, facilityRandomStaff } from './data.js';
 import { renderJourney, notifPreview } from './components.js';
 import { ENROLL, enrollCode, gestationalWeeks } from './enroll-state.js';
 import { startAskCase, markHelpful, markNotHelpful, deliverOperatorReply, continueCase } from './ask-state.js';
@@ -17,14 +17,14 @@ import {
   pageAppToday, pageAppLibrary, pageAppTopic, pageAppContent, pageAppAsk, pageAppAskThread,
   pageAppUrgent, pageAppReferrals, pageAppReferralDetail, pageAppMe, pageAppCallback, pageAppCalling,
   pageAppPreferences, pageAppConsent, pageAppData, pageAppPhone, pageAppMissing, pageAppFacilities,
-  pageAppJoin, pageAppLogin, pageAppOnboarding, pageAppMessages
+  pageAppJoin, pageAppLogin, pageAppOnboarding, pageAppMessages, appNotificationSample
 } from './pages-app.js';
 import { CMS, setCmsRole, setCmsLoggedIn, cmsSignOut } from './cms-state.js';
 import { FACILITY_SESSION, setFacilitySignedIn, identifyFacilityStaff, startFacilityShift } from './facility-state.js';
 import {
   pageFacilityLogin, pageFacilityShiftStart, pageFacilityToday, pageFacilityEnroll, pageFacilitySync, pageFacilityVerify,
-  pageFacilityWorklist, pageFacilityClients, pageFacilityProfile,
-  facilityLookupByCode, facilityConfirmVerification, facilityVerifyRow, facilityMarkFollowedUp
+  pageFacilityWorklist, pageFacilityClients, pageFacilityProfile, pageFacilityRecordVisit,
+  facilityLookupByCode, facilityConfirmVerification, facilityVerifyRow, facilityMarkFollowedUp, facilityRecordVisit
 } from './pages-facility.js';
 import {
   pageCmsCredentials, pageCmsDashboard, pageCmsContent, pageCmsContentNew, pageCmsContentDetail,
@@ -146,6 +146,7 @@ function routeFacility(p){
   }
   if(!sub || sub==='today') return pageFacilityToday();
   if(sub==='enroll') return pageFacilityEnroll();
+  if(sub==='record-visit') return pageFacilityRecordVisit();
   if(sub==='verify') return pageFacilityVerify();
   if(sub==='worklist' && p[2]) return pageFacilityWorklist(p[2]);
   if(sub==='clients') return pageFacilityClients();
@@ -202,6 +203,7 @@ function wireForms(){
   wireFacilitySignOut();
   wireFacilityTimer();
   wireFacilityEnrollForm();
+  wireFacilityRecordVisit();
   wireFacilityVerify();
   wireFacilityWorklistActions();
   wireFacilitySyncNow();
@@ -374,9 +376,9 @@ function wireMessagePreview(){
   const slot = document.getElementById('notifSlot');
   const safeToggle = document.getElementById('notifSafeToggle');
   if(!btn || !slot) return;
-  const sample = JOURNEY[1];
   const paint = ()=>{
-    slot.innerHTML = notifPreview({ body: LANG?sample.msg:sample.en, safe: safeToggle.checked });
+    const sample = appNotificationSample();
+    slot.innerHTML = notifPreview({ body: LANG?sample.km:sample.en, safe: safeToggle.checked });
   };
   btn.addEventListener('click', ()=>{
     paint();
@@ -515,6 +517,41 @@ function wireFacilityEnrollForm(){
         <div><h3>${LANG?'ការចុះឈ្មោះបានបញ្ចប់':'Enrolment complete'}</h3>
         <p>${LANG?`បានចុះឈ្មោះក្នុងរយៈពេល ${secs} វិនាទី`:`Completed in ${secs} seconds`}${withinTarget?(LANG?' — ក្នុងគោលដៅ។':' — within target.'):(LANG?' — លើសគោលដៅបន្តិច នៅតែរក្សាទុក។':' — a little over target, still saved.')}</p>
         <a class="btn btn-primary" style="margin-top:.8rem" href="#/facility/today">${LANG?'ត្រឡប់ទៅតារាងកិច្ចការ':'Back to worklist'}</a></div></div>`;
+    }
+  });
+}
+
+/* ---------- record a visit (#/facility/record-visit) ----------
+   Recording the visit is the trigger: it's what tells the client side
+   a reminder can stop chasing this appointment, and — when a follow-up
+   is needed — what schedules and announces the next one. The
+   confirmation shows the exact message that would go out, using the
+   same notification-preview component the CMS composer and the app's
+   own "how a message arrives" screen already use. */
+function wireFacilityRecordVisit(){
+  const form = document.getElementById('facVisitForm');
+  if(!form) return;
+  const followUp = document.getElementById('facVisitFollowUp');
+  const dateWrap = document.getElementById('facVisitDateWrap');
+  if(followUp && dateWrap) followUp.addEventListener('change', ()=>{ dateWrap.style.display = followUp.checked ? '' : 'none'; });
+
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const who = document.getElementById('facVisitWho').value;
+    const visitType = document.getElementById('facVisitType').value;
+    const needsFollowUp = followUp.checked;
+    const nextDate = document.getElementById('facVisitDate').value;
+    const msg = facilityRecordVisit({ isDemoProfile: who==='demo', visitType, needsFollowUp, nextDate });
+
+    form.hidden = true;
+    const ok = document.getElementById('facVisitOk');
+    if(ok){
+      ok.hidden = false;
+      ok.innerHTML = `<div class="okpanel"><span style="color:var(--ok)">${I.check}</span>
+        <div><h3>${LANG?'បានកត់ត្រា':'Visit recorded'}</h3>
+        <p>${LANG?'អតិថិជននឹងទទួលបានសារនេះ៖':'The client will receive this message:'}</p></div></div>
+        <div style="margin-top:.9rem">${notifPreview({ body: LANG?msg.km:msg.en, safe:false })}</div>
+        <a class="btn btn-primary" style="margin-top:1rem;width:100%" href="#/facility/today">${LANG?'ត្រឡប់ទៅតារាងកិច្ចការ':'Back to worklist'}</a>`;
     }
   });
 }

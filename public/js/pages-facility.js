@@ -10,7 +10,7 @@ import { LANG } from './i18n.js';
 import {
   FACILITY_WORKLIST, FACILITY_NAME, FACILITY_CODE, FACILITY_STAFF_ROSTER, CONSENT_TYPES, DEMO_PROFILE,
   FACILITY_PROVISIONAL_SAMPLE, FACILITY_EDD_PASSED, FACILITY_MISSED, FACILITY_REFERRALS_OPEN,
-  FACILITY_CLIENTS
+  FACILITY_CLIENTS, CONTROLLED_LISTS
 } from './data.js';
 import { facilityShell } from './components.js';
 import { FACILITY_SESSION } from './facility-state.js';
@@ -128,6 +128,8 @@ export function pageFacilityToday(){
       </a>`).join('')}
     <a class="btn btn-primary" style="width:100%;margin-top:1.4rem" href="#/facility/enroll">
       ${I.check} ${LANG?'ចុះឈ្មោះអតិថិជន':'Enrol a client'}</a>
+    <a class="btn btn-ghost" style="width:100%;margin-top:.6rem" href="#/facility/record-visit">
+      ${I.clock} ${LANG?'កត់ត្រាការមកពិនិត្យ':'Record a visit'}</a>
     <a class="btn btn-ghost" style="width:100%;margin-top:.6rem" href="#/facility/sync">${LANG?'ស្ថានភាពសមកាលកម្ម':'Sync status'}</a>
   `;
   return facilityShell({title: LANG?'កិច្ចការថ្ងៃនេះ':'Today’s worklist', active:'today', inner});
@@ -289,6 +291,80 @@ export function facilityMarkFollowedUp(key, ref){
   const list = FAC_LIST_BY_KEY[key];
   const row = list && list.find(r=>r.ref===ref);
   if(row) row.followedUp = true;
+}
+
+/* Record a visit (§4 `service_event.recorded`) — the event a facility
+   reports when a client actually comes in. This is what the client
+   side's reminder for that visit is waiting to hear: recording it here
+   is what would resolve a pending EDD/appointment reminder and, if the
+   visit needs a follow-up, schedule the next one. Non-diagnostic by
+   design — a visit type from the controlled list, a yes/no on
+   follow-up, and (only then) a date. No clinical detail is captured. */
+const VISIT_TYPES = CONTROLLED_LISTS[0].values; // "Referral reason category (non-diagnostic)" — the same controlled list a referral uses
+function defaultNextDate(){
+  const d = new Date();
+  d.setDate(d.getDate() + 14);
+  return d.toISOString().slice(0, 10);
+}
+function formatDateLabel(iso){
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+}
+export function pageFacilityRecordVisit(){
+  const options = VISIT_TYPES.map(v=>`<option value="${v}">${v}</option>`).join('');
+  const inner = `
+    <p class="small" style="margin-bottom:1.1rem">${LANG
+      ?'នេះកត់ត្រាតែថាមានការមកពិនិត្យប៉ុណ្ណោះ — មិនមែនកំណត់ត្រាគ្លីនិកទេ។ សារនឹងផ្ញើទៅអតិថិជនដោយស្វ័យប្រវត្តិ។'
+      :'This only records that a visit happened — not a clinical note. A message goes to the client automatically.'}</p>
+    <form id="facVisitForm" style="display:flex;flex-direction:column;gap:1.1rem">
+      <div class="field">
+        <label for="facVisitWho">${LANG?'អតិថិជន':'Client'}</label>
+        <select id="facVisitWho">
+          <option value="demo">${LANG?'ប្រវត្តិរូបសាកល្បង (មានទូរស័ព្ទដែលអ្នកបានផ្ទៀងផ្ទាត់)':'This demo’s profile (the one you can verify end to end)'}</option>
+          ${FACILITY_CLIENTS.map((c,i)=>`<option value="${i}">${c.phoneMasked} — ${c.stage}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label for="facVisitType">${LANG?'ប្រភេទការមកពិនិត្យ':'Type of visit'}</label>
+        <select id="facVisitType">${options}</select>
+      </div>
+      <label class="cons">
+        <input type="checkbox" id="facVisitFollowUp">
+        <span><b>${LANG?'ត្រូវការការតាមដានបន្ថែម':'Needs a follow-up'}</b>
+          <span>${LANG?'នឹងកំណត់ពេលការមកលើកក្រោយ ហើយប្រាប់អតិថិជនតាមសារ។':'Schedules a next visit and tells the client by message.'}</span></span>
+      </label>
+      <div class="field" id="facVisitDateWrap" style="display:none">
+        <label for="facVisitDate">${LANG?'ការណាត់ជួបលើកក្រោយ (ប៉ាន់ស្មាន)':'Next appointment (estimate)'}</label>
+        <input id="facVisitDate" type="date" value="${defaultNextDate()}">
+      </div>
+      <button class="btn btn-primary" type="submit" style="width:100%">${LANG?'កត់ត្រាការមកពិនិត្យ':'Record visit'}</button>
+    </form>
+    <div id="facVisitOk" hidden></div>
+  `;
+  return facilityShell({title: LANG?'កត់ត្រាការមកពិនិត្យ':'Record a visit', back:'#/facility/today', inner});
+}
+
+/* Returns the message the client would receive, in both languages, so
+   the confirmation panel can show exactly what just got sent — the
+   same notification-preview pattern used everywhere else in this demo,
+   not a different one invented just for this screen. */
+export function facilityRecordVisit({ isDemoProfile, visitType, needsFollowUp, nextDate }){
+  const dateLabel = formatDateLabel(nextDate);
+  const todayLabel = formatDateLabel(new Date().toISOString().slice(0,10));
+  const msg = {
+    en: needsFollowUp
+      ? `Thanks for coming in today for your ${visitType.toLowerCase()}. Your next appointment is around ${dateLabel} — we’ll remind you closer to the time.`
+      : `Thanks for coming in today for your ${visitType.toLowerCase()}. Nothing further needed for now — we’ll keep sending your regular guidance.`,
+    km: needsFollowUp
+      ? `អរគុណដែលបានមកពិនិត្យថ្ងៃនេះសម្រាប់ ${visitType}។ ការណាត់ជួបលើកក្រោយរបស់អ្នកគឺនៅជុំវិញ ${dateLabel} — យើងនឹងរំលឹកអ្នកនៅពេលជិតដល់។`
+      : `អរគុណដែលបានមកពិនិត្យថ្ងៃនេះសម្រាប់ ${visitType}។ មិនត្រូវការអ្វីបន្ថែមទេពេលនេះ — យើងនឹងបន្តផ្ញើការណែនាំធម្មតារបស់អ្នក។`
+  };
+  if(isDemoProfile){
+    DEMO_PROFILE.lastVisit = { type: visitType, date: todayLabel };
+    DEMO_PROFILE.nextAppointment = needsFollowUp ? { type: visitType, date: dateLabel } : null;
+  }
+  return msg;
 }
 
 export function pageFacilitySync(){
