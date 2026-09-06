@@ -941,7 +941,13 @@ export const FACILITY_CLIENTS = [
    verify flow both read as though a specific named, credentialed
    midwife is at the wheel — because on a real shared device, one
    always is. */
-export const FACILITY_STAFF = { name:'Sok Ratana', role:'Midwife', staffCode:'MW-1042' };
+/* A real device would authenticate against an identity provider (§13:
+   "Identity — Buy — never build authentication") — out of scope for a
+   static demo. What isn't out of scope is *looking* like a sign-in: a
+   shared clinic tablet rotates between staff fast, so a short PIN per
+   worker (not a typed email/password) is the realistic shape here, and
+   this demo actually checks it rather than letting any tap through. */
+export const FACILITY_STAFF = { name:'Sok Ratana', role:'Midwife', staffCode:'MW-1042', pin:'4821' };
 
 /* ============ helpdesk composer safety gate (§6.3) ============
    An operator may send only an approved item, an approved macro, or

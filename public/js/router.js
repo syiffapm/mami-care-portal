@@ -4,7 +4,7 @@
    consent centre, referrals. */
 import { I } from './icons.js';
 import { LANG, t, toggleLang, setLang } from './i18n.js';
-import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE, JOURNEY } from './data.js';
+import { SERVICES, AUDIENCES, svc, aud, news, SUGGESTED_QUESTIONS, DEMO_PROFILE, JOURNEY, FACILITY_STAFF } from './data.js';
 import { renderJourney, notifPreview } from './components.js';
 import { ENROLL, enrollCode, gestationalWeeks } from './enroll-state.js';
 import { startAskCase, markHelpful, markNotHelpful, deliverOperatorReply, continueCase } from './ask-state.js';
@@ -413,9 +413,17 @@ function wireFacilitySearch(){
    the blueprint's 90-second target, so it starts the moment the form
    renders and freezes the elapsed time into the confirmation. */
 function wireFacilitySignIn(){
-  const btn = document.getElementById('facSignIn');
-  if(!btn) return;
-  btn.addEventListener('click', ()=>{
+  const form = document.getElementById('facLoginForm');
+  if(!form) return;
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const pin = document.getElementById('facPin').value.trim();
+    const err = document.getElementById('facLoginError');
+    if(pin !== FACILITY_STAFF.pin){
+      if(err) err.hidden = false;
+      return;
+    }
+    if(err) err.hidden = true;
     setFacilitySignedIn(true);
     location.hash = '#/facility/today';
   });

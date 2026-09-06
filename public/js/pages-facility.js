@@ -14,6 +14,12 @@ import {
 } from './data.js';
 import { facilityShell } from './components.js';
 
+/* A real device authenticates against an identity provider (§13 — buy,
+   never build). What a shared clinic tablet actually looks like day to
+   day is a short staff PIN, not a typed email/password, since several
+   people rotate through the same device in a shift. This demo checks
+   the PIN for real (against FACILITY_STAFF.pin) rather than letting
+   any tap through — the earlier version had no field at all. */
 export function pageFacilityLogin(){
   return `
 <section>
@@ -23,13 +29,23 @@ export function pageFacilityLogin(){
         background:var(--gov);color:var(--gov-ink);margin:0 auto 1rem">${I.shield}</span>
       <h1 style="font-size:1.35rem">${LANG?'ចូលកម្មវិធីមណ្ឌលសុខភាព':'Facility Portal sign-in'}</h1>
       <p class="small" style="margin-top:.6rem">${LANG
-        ?`ឧបករណ៍នេះបានចុះឈ្មោះជាមួយ ${FACILITY_NAME}។`
-        :`This device is registered to ${FACILITY_NAME}.`}</p>
-      <button class="btn btn-primary" id="facSignIn" type="button" style="width:100%;margin-top:1.3rem">
-        ${LANG?'បន្តជាបុគ្គលិកសុខាភិបាល':'Continue as health worker'} ${I.arrow}</button>
-      <p class="small" style="margin-top:1rem">${LANG
-        ?'សម្រាប់បុគ្គលិកមណ្ឌលសុខភាពដែលមានលិខិតបញ្ជាក់ប៉ុណ្ណោះ។'
-        :'For credentialed facility staff only.'}</p>
+        ?`ឧបករណ៍នេះបានចុះឈ្មោះជាមួយ ${FACILITY_NAME}។ បញ្ចូលកូដសម្ងាត់បុគ្គលិករបស់អ្នក ដើម្បីបន្ត។`
+        :`This device is registered to ${FACILITY_NAME}. Enter your staff PIN to continue.`}</p>
+      <form id="facLoginForm" style="margin-top:1.3rem;text-align:left">
+        <div class="field">
+          <label for="facPin">${LANG?'កូដសម្ងាត់បុគ្គលិក':'Staff PIN'}</label>
+          <input id="facPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4"
+            placeholder="••••" autocomplete="off" autofocus style="text-align:center;letter-spacing:.4em;font-size:1.2rem">
+        </div>
+        <p id="facLoginError" class="small" style="color:var(--urgent);margin-top:.6rem" hidden>${LANG
+          ?'កូដសម្ងាត់មិនត្រឹមត្រូវទេ។ សូមសាកល្បងម្តងទៀត។'
+          :'Incorrect PIN. Try again.'}</p>
+        <button class="btn btn-primary" type="submit" style="width:100%;margin-top:1rem">
+          ${LANG?'ចូល':'Sign in'} ${I.arrow}</button>
+      </form>
+      <p class="small" style="margin-top:1.1rem">${LANG
+        ?'សម្រាប់បុគ្គលិកមណ្ឌលសុខភាពដែលមានលិខិតបញ្ជាក់ប៉ុណ្ណោះ។ (សាកល្បង៖ កូដ 4821)'
+        :'For credentialed facility staff only. (Demo PIN: 4821 — for testing this preview.)'}</p>
     </div>
   </div>
 </section>`;
